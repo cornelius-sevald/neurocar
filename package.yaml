@@ -1,0 +1,48 @@
+name:                neurocar
+version:             0.1.0.0
+github:              "cornelius-sevald/neurocar"
+license:             BSD3
+author:              "Cornelius Sevald-Krause"
+maintainer:          "cornelius.sevald@gmail.com"
+copyright:           "2020 Cornelius Sevald-Krause"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/cornelius-sevald/neurocar#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- sdl2 >= 2.5.0.0
+
+library:
+  source-dirs: src
+
+executables:
+  neurocar-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - neurocar
+
+tests:
+  neurocar-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - neurocar
