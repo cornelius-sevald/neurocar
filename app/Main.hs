@@ -6,6 +6,8 @@ import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Loops
 import           Control.Monad.State
+import           Data.IORef
+import           Data.Word           (Word32)
 import           Graphics
 import           SDL
 import           SDL.Time
@@ -45,16 +47,51 @@ main = do
     initializeAll
     window <- createWindow "Neuro Car" windowsConfig
     renderer <- createRenderer window (-1) rendererConfig
+    gameTicks <- newIORef (0 :: Word32)
     let appLoop w = do { drawWorld renderer w
-                       ; frameInfo <- getFrameInfo
-                       ; return $ gameLoop frameInfo w }
-     in void $ iterateUntilM (view shouldQuit) appLoop (initWorld carParams)
+                       ; input <- getUserInput
+                       ; oldTick   <- readIORef gameTicks
+                       ; nowTick <- ticks
+                       ; let deltaTime = fromIntegral (nowTick - oldTick) / 1000
+                       ; writeIORef gameTicks nowTick
+                       ; return $ gameLoop input deltaTime w }
+     in void $ iterateUntilM (\w -> view gameState w /= GameRunning) appLoop (initWorld carParams)
 
-getFrameInfo :: IO FrameInfo
-getFrameInfo = do
-    t <- ticks
-    events <- pollEvents
-    kbs <- getKeyboardState
-    return FrameInfo { _frameTicks = t
-                     , _events = events
-                     , _keyboardState = kbs }
+boolList :: [(Bool, a)] -> [a]
+boolList []              = []
+boolList ((True, x):xs)  = x : boolList xs
+boolList ((False, x):xs) = boolList xs
+
+isEventButtonPress :: Keycode -> Event -> Bool
+isEventButtonPress code event =
+            case eventPayload event of
+              KeyboardEvent keyboardEvent ->
+                  keyboardEventKeyMotion keyboardEvent == Pressed &&
+                  keysymKeycode (keyboardEventKeysym keyboardEvent) == code
+              _ -> False
+
+getUserInput :: IO [Input]
+getUserInput = do
+    keyboardState  <- getKeyboardState
+    events         <- pollEvents
+    let eventIsQuitRequested event =
+            case eventPayload event of
+              QuitEvent -> True
+              _         -> False
+        quitRequested = any eventIsQuitRequested events
+        wHeld      = keyboardState ScancodeW
+        aHeld      = keyboardState ScancodeA
+        sHeld      = keyboardState ScancodeS
+        dHeld      = keyboardState ScancodeD
+        upHeld     = keyboardState ScancodeUp
+        leftHeld   = keyboardState ScancodeLeft
+        downHeld   = keyboardState ScancodeDown
+        rightHeld  = keyboardState ScancodeRight
+        qPressed   = any (isEventButtonPress KeycodeQ) events
+        escPressed = any (isEventButtonPress KeycodeEscape) events
+        ifList     = [ (wHeld || upHeld,    GoForward)
+                     , (aHeld || leftHeld,  GoLeft)
+                     , (sHeld || downHeld,  GoBackward)
+                     , (dHeld || rightHeld, GoRight)
+                     , (qPressed || escPressed || quitRequested, Quit)]
+    return $ boolList ifList

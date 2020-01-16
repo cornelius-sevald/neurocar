@@ -101,6 +101,7 @@ updateCar actions deltaTime = do
     get >>= rotateCar . ( * deltaTime) . view rotationVelocity
     -- Friction not implemented
 
+
 carActionsToBools :: Foldable f => f CarAction -> (Bool, Bool, Bool, Bool)
 carActionsToBools = foldl (\(a, b, l, r) action ->
     case action of
