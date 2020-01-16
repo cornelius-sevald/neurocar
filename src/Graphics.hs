@@ -15,7 +15,7 @@ drawWorld ren world = do
     clear ren
     --     Draw the car
     rendererDrawColor ren $= V4 0 255 0 255
-    drawCar ren (_getCar world)
+    drawCar ren (view car world)
     --     Present the world
     present ren
     return world

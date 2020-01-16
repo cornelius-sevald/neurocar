@@ -1,9 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 module World
     ( World(..)
+    , FrameInfo(..)
     , shouldQuit
-    , gameTicks
-    , getCar
+    , worldTicks
+    , car
+    , events
+    , keyboardState
+    , frameTicks
     , initWorld
     , gameLoop
     ) where
@@ -12,13 +16,18 @@ import           Car
 import           Control.Lens
 import           Control.Monad.State
 import           Data.Word
-import           SDL
+import           SDL                 hiding (ticks)
 
 data World = World { _shouldQuit :: Bool
-                   , _gameTicks  :: Word32
-                   , _getCar     :: Car }
+                   , _worldTicks :: Word32
+                   , _car        :: Car }
+
+data FrameInfo = FrameInfo { _events        :: [Event]
+                           , _keyboardState :: Scancode -> Bool
+                           , _frameTicks    :: Word32 }
 
 makeLenses ''World
+makeLenses ''FrameInfo
 
 isEventButtonPress :: Keycode -> Event -> Bool
 isEventButtonPress code event =
@@ -31,30 +40,24 @@ isEventButtonPress code event =
 initWorld :: CarParams -> World
 initWorld carParams = let car = newCar carParams
                        in World { _shouldQuit=False
-                                , _gameTicks=0
-                                , _getCar=car }
+                                , _worldTicks=0
+                                , _car=car }
 
-gameLoop :: World -> IO World
-gameLoop world = do
-    -- Time
-    tickCount <- ticks
-    let prevTickCount = view gameTicks world
-        deltaTime = fromIntegral (tickCount - prevTickCount) / 1000
-    -- Events
-    events <- pollEvents
-    keyboardState <- getKeyboardState
-    let qPressed = any (isEventButtonPress KeycodeQ) events
-        wHeld = keyboardState ScancodeW
-        aHeld = keyboardState ScancodeA
-        sHeld = keyboardState ScancodeS
-        dHeld = keyboardState ScancodeD
-    -- Game logic
-    let buttonActions = zip [wHeld, sHeld, aHeld, dHeld] [minBound .. maxBound]
-        carInput = foldl (\acc (b, i) -> if b then i:acc else acc) [] buttonActions
-        ((), car') = runState (updateCar carInput deltaTime) (view getCar world)
-    let world' = set getCar car' world
-    let world'' = if qPressed then set shouldQuit True world'
-                            else world'
-    let world''' = set gameTicks tickCount world''
-    -- Wait
-    return world'''
+gameLoop :: FrameInfo -> World -> World
+gameLoop info world = let fTicks = view frameTicks info
+                          wTicks = view worldTicks world
+                          deltaTime = fromIntegral (fTicks - wTicks) / 1000
+                          -- Input
+                          pressed code = any (isEventButtonPress code) (view events info)
+                          held = view keyboardState info
+                          qPressed = pressed KeycodeQ
+                          wHeld = held ScancodeW
+                          aHeld = held ScancodeA
+                          sHeld = held ScancodeS
+                          dHeld = held ScancodeD
+                          -- Game logic
+                          buttonActions = zip [wHeld, sHeld, aHeld, dHeld] [minBound .. maxBound]
+                          carInput = foldl (\acc (b, i) -> if b then i:acc else acc) [] buttonActions
+                       in execState (do { car %= execState (updateCar carInput deltaTime)
+                                        ; when qPressed (shouldQuit .= True)
+                                        ; worldTicks .= view frameTicks info }) world
