@@ -28,7 +28,7 @@ appLoop renderer car = do
     -- Game logic
     let buttonActions = zip [wHeld, sHeld, aHeld, dHeld] [minBound .. maxBound]
         carInput = foldl (\acc (b, i) -> if b then i:acc else acc) [] buttonActions
-        ((), car') = runState (updateCar carInput 0.0002) car
+        ((), car') = runState (updateCar carInput 0.1) car
     -- Drawing
     --     Draw the background
     rendererDrawColor renderer $= V4 0 0 0 255
@@ -37,6 +37,7 @@ appLoop renderer car = do
     rendererDrawColor renderer $= V4 0 255 0 255
     drawCar renderer car
     present renderer
+    delay 100
     unless qPressed (appLoop renderer car')
 
 
@@ -45,11 +46,11 @@ main = do
     initializeAll
     window <- createWindow "Neuro Car" defaultWindow
     renderer <- createRenderer window (-1) defaultRenderer
-    let car = newCar $ CarParams { _width=35
-                                 , _height=50
-                                 , _acceleration=5
-                                 , _deAcceleration=3
-                                 , _turnSpeed=0.08
+    let car = newCar $ CarParams { _width=0.65
+                                 , _height=1.0
+                                 , _acceleration=4
+                                 , _deAcceleration=2
+                                 , _turnSpeed=2
                                  , _friction=0.1
                                  , _turnFriction=0.1
                                  , _color=V4 255 0 0 255 }
