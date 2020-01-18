@@ -6,11 +6,11 @@ import           SDL.Vect
 
 -- Units per width
 upw :: RealFrac a => a
-upw = 16
+upw = 48
 
 -- Units per height
 uph :: RealFrac a => a
-uph = 9
+uph = 27
 
 toScreenPoint :: RealFrac a => Renderer -> Point V2 a -> IO (Point V2 CInt)
 toScreenPoint ren (P (V2 x0 y0)) = do
@@ -19,7 +19,7 @@ toScreenPoint ren (P (V2 x0 y0)) = do
                    Just (Rectangle _ v) -> fromIntegral <$> v
                    Nothing              -> error "No viewport"
     let x1 = round $ x0 * (w / upw) + w / 2
-        y1 = round $ y0 * (h / uph) + h / 2
+        y1 = round $ h - (y0 * (h / uph) + h / 2)
     return (P (V2 x1 y1))
 
 toScreenScale :: RealFrac a => Renderer -> V2 a -> IO (V2 CInt)

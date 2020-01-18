@@ -11,6 +11,7 @@ import           Data.Word           (Word32)
 import           Graphics
 import           SDL
 import           SDL.Time
+import qualified Track               as T
 import           World
 
 windowsConfig :: WindowConfig
@@ -40,13 +41,17 @@ carParams = C.CarParams
     , C._turnSpeed      = 2
     , C._friction       = 0.1
     , C._turnFriction   = 0.1
-    , C._color          = V4 255 0 0 255 }
+    , C._color          = V4 0 0 255 255 }
+
 
 main :: IO ()
 main = do
     initializeAll
     window <- createWindow "Neuro Car" windowsConfig
     renderer <- createRenderer window (-1) rendererConfig
+    gameTrack <- T.fromCSV (V4 0 255 0 255) "tracks/track000.csv"
+    let carPos = V2 (negate 20) (negate 10)
+    let carRot = 0
     gameTicks <- newIORef (0 :: Word32)
     let appLoop w = do { drawWorld renderer w
                        ; input <- getUserInput
@@ -55,7 +60,7 @@ main = do
                        ; let deltaTime = fromIntegral (nowTick - oldTick) / 1000
                        ; writeIORef gameTicks nowTick
                        ; return $ gameLoop input deltaTime w }
-     in void $ iterateUntilM (\w -> view gameState w /= GameRunning) appLoop (initWorld carParams)
+     in void $ iterateUntilM (\w -> view gameState w /= GameRunning) appLoop (initWorld carParams carPos carRot gameTrack)
 
 boolList :: [(Bool, a)] -> [a]
 boolList []              = []

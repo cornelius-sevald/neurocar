@@ -65,12 +65,12 @@ data Car = Car { _params           :: CarParams
 makeLenses ''CarParams
 makeLenses ''Car
 
-newCar :: CarParams -> Car
-newCar params = Car { _params = params
-                    , _position = pure 0
-                    , _velocity = pure 0
-                    , _rotation = 0
-                    , _rotationVelocity = 0 }
+newCar :: CarParams -> V2 Double -> Double -> Car
+newCar params startPos startRot = Car { _params = params
+                                      , _position = startPos
+                                      , _velocity = pure 0
+                                      , _rotation = startRot + pi
+                                      , _rotationVelocity = 0 }
 
 moveCar :: V2 Double -> State Car ()
 moveCar amount = state $ \car -> ((), over position (+ amount) car)
@@ -95,8 +95,8 @@ updateCar actions deltaTime = do
     let rot     = view (params . turnSpeed)             car  * deltaTime
     when accelerate (accelerateCar accel)
     when break      (accelerateCar $ negate deAccel)
-    when right      (rotAccelerateCar rot)
-    when left       (rotAccelerateCar (-rot))
+    when right      (rotAccelerateCar (-rot))
+    when left       (rotAccelerateCar rot)
     get >>= moveCar   . (^* deltaTime) . view velocity
     get >>= rotateCar . ( * deltaTime) . view rotationVelocity
     -- Friction not implemented

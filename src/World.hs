@@ -5,6 +5,7 @@ module World
     , Input(..)
     , gameState
     , car
+    , track
     , initWorld
     , gameLoop
     ) where
@@ -13,6 +14,8 @@ import           Car
 import           Control.Lens
 import           Control.Monad.State
 import           Data.Word
+import           Track
+import Linear.V2
 
 data GameState = GameRunning
                | GameQuit
@@ -20,7 +23,8 @@ data GameState = GameRunning
                deriving (Eq, Ord, Enum, Show)
 
 data World = World { _gameState :: GameState
-                   , _car       :: Car }
+                   , _car       :: Car
+                   , _track     :: Track Double }
                    deriving (Eq, Show)
 
 data Input = GoForward
@@ -41,10 +45,11 @@ inputToCarActions (x:xs) = case x of
                              GoRight     -> CarTurnRight : inputToCarActions xs
                              _           -> inputToCarActions xs
 
-initWorld :: CarParams -> World
-initWorld carParams = let car = newCar carParams
-                          in World { _gameState = GameRunning
-                                   , _car=car }
+initWorld :: CarParams -> V2 Double -> Double -> Track Double -> World
+initWorld carParams carPos carRot track = let car = newCar carParams carPos carRot
+                                           in World { _gameState=GameRunning
+                                                    , _car=car
+                                                    , _track=track }
 
 gameLoop :: [Input] -> Double -> World -> World
 gameLoop inputs deltaTime world =
