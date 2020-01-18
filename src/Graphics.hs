@@ -47,9 +47,8 @@ drawCar ren car = do
 drawTrack :: RealFrac a => Renderer -> T.Track a -> IO ()
 drawTrack ren track = do
     viewport <- get $ rendererViewport ren
-    let outerC' = last (view T.outerRing track) : view T.outerRing track
-        innerC' = last (view T.innerRing track) : view T.innerRing track
-    outerC <- mapM (F.toScreenPoint ren . P) outerC'
-    innerC <- mapM (F.toScreenPoint ren . P) innerC'
-    drawLines ren (V.fromList outerC)
+    let ringC' = last (view T.rings track) : view T.rings track
+    innerC <- mapM ((F.toScreenPoint ren . P) . fst) ringC'
+    outerC <- mapM ((F.toScreenPoint ren . P) . snd) ringC'
     drawLines ren (V.fromList innerC)
+    drawLines ren (V.fromList outerC)
