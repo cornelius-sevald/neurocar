@@ -36,11 +36,11 @@ carParams :: C.CarParams
 carParams = C.CarParams
     { C._width          = 0.65
     , C._height         = 1.0
-    , C._acceleration   = 4
-    , C._deAcceleration = 2
-    , C._turnSpeed      = 2
-    , C._friction       = 0.1
-    , C._turnFriction   = 0.1
+    , C._acceleration   = 8
+    , C._deAcceleration = 6
+    , C._turnSpeed      = 4
+    , C._friction       = 0.6
+    , C._turnFriction   = 0.6
     , C._color          = V4 0 0 255 255 }
 
 

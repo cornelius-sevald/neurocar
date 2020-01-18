@@ -65,6 +65,13 @@ data Car = Car { _params           :: CarParams
 makeLenses ''CarParams
 makeLenses ''Car
 
+-- Calculate the friction multiplier from the
+-- friction coefficient and delta time.
+-- This is not how it actualy works in the real world.
+calcFrictionMultiplier :: Floating a => a -> a -> a
+calcFrictionMultiplier mu dt = (1 / (1-mu))**(-dt)
+
+
 newCar :: CarParams -> V2 Double -> Double -> Car
 newCar params startPos startRot = Car { _params = params
                                       , _position = startPos
@@ -93,6 +100,15 @@ updateCar actions deltaTime = do
     let accel   = dir ^* view (params . acceleration)   car ^* deltaTime
     let deAccel = dir ^* view (params . deAcceleration) car ^* deltaTime
     let rot     = view (params . turnSpeed)             car  * deltaTime
+    -- Frcitoon
+    let moveMu  = view (params . friction)              car
+    let rotMu   = view (params . friction)              car
+    let moveFricMul = calcFrictionMultiplier moveMu deltaTime
+    let rotFricMul  = calcFrictionMultiplier moveMu deltaTime
+    velocity._x      *= moveFricMul
+    velocity._y      *= moveFricMul
+    rotationVelocity *= rotFricMul
+    -- Movement
     when accelerate (accelerateCar accel)
     when break      (accelerateCar $ negate deAccel)
     when right      (rotAccelerateCar (-rot))

@@ -14,8 +14,8 @@ import           Car
 import           Control.Lens
 import           Control.Monad.State
 import           Data.Word
+import           Linear.V2
 import           Track
-import Linear.V2
 
 data GameState = GameRunning
                | GameQuit
@@ -53,9 +53,7 @@ initWorld carParams carPos carRot track = let car = newCar carParams carPos carR
 
 gameLoop :: [Input] -> Double -> World -> World
 gameLoop inputs deltaTime world =
-    let worldState = do
-        { when (Quit `elem` inputs) (gameState .= GameQuit)
-        ; when (view gameState world == GameRunning) $ do
-            { let carInput = inputToCarActions inputs
-            ; car %= execState (updateCar carInput deltaTime) } }
+    let worldState = do when (Quit `elem` inputs) (gameState .= GameQuit)
+                        when (view gameState world == GameRunning) $ car %= execState (updateCar carInput deltaTime)
+                            where carInput = inputToCarActions inputs
      in execState worldState world
