@@ -22,6 +22,7 @@ dependencies:
 - base >= 4.7 && < 5
 - extra >= 1.6.18
 - tuple >= 0.3.0.2
+- text >= 1.2.3.1
 - linear >= 1.20
 - vector >= 0.12.0.0
 - mtl >= 2.2.2
@@ -29,6 +30,7 @@ dependencies:
 - monad-loops >= 0.4.3
 - errors >= 2.3.0
 - sdl2 >= 2.5.0.0
+- sdl2-ttf >= 2.1.0
 - lens >= 4.0
 - cassava >= 0.5.2.0
 - bytestring >= 0.10.8.2

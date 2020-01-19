@@ -32,6 +32,12 @@ toScreenScale ren (V2 x0 y0) = do
         y1 = round $ y0 * (h / uph)
     return (V2 x1 y1)
 
+toScreenRect :: RealFrac a => Renderer -> Rectangle a -> IO (Rectangle CInt)
+toScreenRect ren (Rectangle c0 e0) = do
+    c1 <- toScreenPoint ren c0
+    e1 <- toScreenScale ren e0
+    return (Rectangle c1 e1)
+
 toWorldPoint :: RealFrac a => Renderer -> Point V2 CInt -> IO (Point V2 a)
 toWorldPoint ren point = do
     viewport <- get $ rendererViewport ren

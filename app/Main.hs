@@ -13,6 +13,8 @@ import           SDL
 import           SDL.Time
 import qualified Track               as T
 import           World
+import qualified SDL.Font as TTF
+import           System.IO
 
 windowsConfig :: WindowConfig
 windowsConfig = WindowConfig
@@ -43,6 +45,12 @@ carParams = C.CarParams
     , C._turnFriction   = 0.6
     , C._color          = V4 0 0 255 255 }
 
+fontSize :: TTF.PointSize
+fontSize = 28
+
+fontPath :: FilePath
+fontPath = "fonts/VCR_OSD_MONO.ttf"
+
 -- The time the player gets to play
 gameTime :: Double
 gameTime = 60
@@ -50,14 +58,16 @@ gameTime = 60
 main :: IO ()
 main = do
     initializeAll
+    TTF.initialize
     window <- createWindow "Neuro Car" windowsConfig
     renderer <- createRenderer window (-1) rendererConfig
+    font <- TTF.load fontPath fontSize
     gameTrack <- T.fromCSV (V4 0 255 0 255) "tracks/track000.csv"
     let carPos = V2 (negate 20) (negate 10)
     let carRot = 0
     gameTicks <- newIORef (0 :: Word32)
     let appLoop w = do
-        { drawWorld renderer w
+        { drawWorld renderer font w
         ; input <- getUserInput
         ; oldTick   <- readIORef gameTicks
         ; nowTick <- ticks
