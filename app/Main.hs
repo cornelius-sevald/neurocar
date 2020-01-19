@@ -43,6 +43,9 @@ carParams = C.CarParams
     , C._turnFriction   = 0.6
     , C._color          = V4 0 0 255 255 }
 
+-- The time the player gets to play
+gameTime :: Double
+gameTime = 60
 
 main :: IO ()
 main = do
@@ -53,14 +56,15 @@ main = do
     let carPos = V2 (negate 20) (negate 10)
     let carRot = 0
     gameTicks <- newIORef (0 :: Word32)
-    let appLoop w = do { drawWorld renderer w
-                       ; input <- getUserInput
-                       ; oldTick   <- readIORef gameTicks
-                       ; nowTick <- ticks
-                       ; let deltaTime = fromIntegral (nowTick - oldTick) / 1000
-                       ; writeIORef gameTicks nowTick
-                       ; return $ gameLoop input deltaTime w }
-     in void $ iterateUntilM (\w -> view gameState w /= GameRunning) appLoop (initWorld carParams carPos carRot gameTrack)
+    let appLoop w = do
+        { drawWorld renderer w
+        ; input <- getUserInput
+        ; oldTick   <- readIORef gameTicks
+        ; nowTick <- ticks
+        ; let deltaTime = fromIntegral (nowTick - oldTick) / 1000
+        ; writeIORef gameTicks nowTick
+        ; return $ gameLoop input deltaTime w }
+     in void $ iterateUntilM (\w -> view gameState w == GameQuit) appLoop (initWorld carParams carPos carRot gameTrack gameTime)
 
 boolList :: [(Bool, a)] -> [a]
 boolList []              = []

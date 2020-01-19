@@ -22,6 +22,8 @@ module Car
       -- </Lenses>
       -- <Util>
     , newCar
+    , localCorners
+    , globalCorners
       -- </Util>
       -- <State>
     , moveCar
@@ -36,6 +38,7 @@ import           Control.Lens
 import           Control.Monad.State
 import           Data.Function
 import           Data.Word
+import qualified Geometry            as G
 import           SDL.Vect
 
 data CarParams = CarParams { _width          :: Double
@@ -78,6 +81,17 @@ newCar params startPos startRot = Car { _params = params
                                       , _velocity = pure 0
                                       , _rotation = startRot + pi
                                       , _rotationVelocity = 0 }
+
+localCorners :: Car -> [V2 Double]
+localCorners car = let w = view (params . width) car / 2
+                       h = view (params . height) car / 2
+                    in [V2 w h, V2 (-w) h, V2 (-w) (-h), V2 w (-h)]
+
+globalCorners :: Car -> [V2 Double]
+globalCorners car = let corners' = localCorners car
+                        c        = view position car
+                        rot      = view rotation car
+                     in map ((c ^+^) . G.rotate rot) corners'
 
 moveCar :: V2 Double -> State Car ()
 moveCar amount = state $ \car -> ((), over position (+ amount) car)
