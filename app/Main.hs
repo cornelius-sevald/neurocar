@@ -43,7 +43,7 @@ carParams = C.CarParams
     , C._turnSpeed      = 4
     , C._friction       = 0.6
     , C._turnFriction   = 0.6
-    , C._color          = V4 0 0 255 255 }
+    , C._color          = V4 100 100 255 255 }
 
 fontSize :: TTF.PointSize
 fontSize = 28
