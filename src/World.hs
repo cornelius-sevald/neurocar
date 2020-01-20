@@ -53,13 +53,15 @@ inputToCarActions (x:xs) = case x of
                              GoRight     -> CarTurnRight : inputToCarActions xs
                              _           -> inputToCarActions xs
 
-initWorld :: CarParams -> V2 Double -> Double -> Track Double -> Double -> World
-initWorld carParams carPos carRot track time = let car = newCar carParams carPos carRot
-                                                in World { _gameState=GameRunning
-                                                         , _car=car
-                                                         , _track=track
-                                                         , _score=0
-                                                         , _timeLeft=time }
+initWorld :: CarParams -> Track Double -> Double -> World
+initWorld carParams track time = let carPos = track^.carStartPos
+                                     carRot = track^.carStartRot
+                                     car = newCar carParams carPos carRot
+                                  in World { _gameState=GameRunning
+                                           , _car=car
+                                           , _track=track
+                                           , _score=0
+                                           , _timeLeft=time }
 
 gameLoop :: [Input] -> Double -> World -> World
 gameLoop inputs deltaTime world =

@@ -62,7 +62,7 @@ main = do
     window <- createWindow "Neuro Car" windowsConfig
     renderer <- createRenderer window (-1) rendererConfig
     font <- TTF.load fontPath fontSize
-    gameTrack <- T.fromCSV (V4 0 255 0 255) "tracks/track000.csv"
+    gameTrack <- T.fromFile (V4 0 255 0 255) "tracks/track001.nct"
     let carPos = V2 (negate 20) (negate 10)
     let carRot = 0
     gameTicks <- newIORef (0 :: Word32)
@@ -74,7 +74,7 @@ main = do
         ; let deltaTime = fromIntegral (nowTick - oldTick) / 1000
         ; writeIORef gameTicks nowTick
         ; return $ gameLoop input deltaTime w }
-     in void $ iterateUntilM (\w -> view gameState w == GameQuit) appLoop (initWorld carParams carPos carRot gameTrack gameTime)
+     in void $ iterateUntilM (\w -> view gameState w == GameQuit) appLoop (initWorld carParams gameTrack gameTime)
 
 boolList :: [(Bool, a)] -> [a]
 boolList []              = []
