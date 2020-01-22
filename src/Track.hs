@@ -15,7 +15,6 @@ import qualified Car                   as C
 import           Control.Lens
 import           Control.Monad.State
 import           Data.List.Split
-import qualified Data.Vector           as Vec
 import           Data.Word             (Word8)
 import           Geometry
 import           Geometry.Intersection
