@@ -1,17 +1,21 @@
 module Graphics ( drawWorld ) where
 
-import qualified Car                  as C
+import qualified Car                   as C
 import           Control.Lens
-import           Data.Text            (pack)
-import           Data.Tuple.Extra     as TE
-import qualified Data.Tuple.Sequence  as TS
-import qualified Data.Vector.Storable as V
+import           Control.Monad
+import           Data.Maybe
+import           Data.Text             (pack)
+import           Data.Tuple.Extra      as TE
+import qualified Data.Tuple.Sequence   as TS
+import qualified Data.Vector.Storable  as V
 import           Geometry
-import           SDL                  hiding (rotate)
-import qualified SDL.Font             as TTF
-import           SDL.Vect             hiding (rotate)
-import qualified Track                as T
-import qualified Transform            as F
+import qualified Geometry.Intersection as GI
+import           SDL                   hiding (rotate)
+import qualified SDL.Font              as TTF
+import           SDL.Vect              hiding (rotate)
+import qualified Track                 as T
+import qualified Transform             as F
+import           Util
 import           World
 
 white = V4 255 255 255 255
@@ -32,7 +36,11 @@ drawWorld ren font world = do
       GameLost    -> rendererDrawColor ren $= V4 255   0 0 255
       TimeUp      -> rendererDrawColor ren $= V4 155 155 0 255
     drawTrack ren (view track world)
+    --     Draw debug rays from the car
+    --rendererDrawColor ren $= V4 100 100 100 255
+    --drawDebugCarRays ren world
     --     Draw info to the player
+    rendererDrawColor ren $= V4 255 255 255 255
     drawInfo ren font world
     --     Present the world
     present ren
@@ -66,6 +74,15 @@ scoreRect :: Rectangle Double
 scoreRect = let c = P (V2 (F.upw * 0.4) (F.uph * 0.425))
                 e =    V2 (F.upw * 0.08) (F.uph * 0.06)
             in Rectangle c e
+
+drawDebugCarRays :: Renderer -> World -> IO ()
+drawDebugCarRays ren world = do
+    let rays = C.shootRays pi 7 (world^.car)
+    let intersections = catMaybes $ T.rayIntersection (world^.track) <$> rays
+    forM_ intersections $ \intersection -> do
+          o <- F.toScreenPoint ren $ P (world^.car.C.position)
+          p <- F.toScreenPoint ren $ P intersection
+          drawLine ren o p
 
 drawInfo :: Renderer -> TTF.Font -> World -> IO ()
 drawInfo ren font world = do

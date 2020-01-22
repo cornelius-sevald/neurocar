@@ -1,33 +1,69 @@
 module Geometry.Intersection
-    ( Segment
-    , intersect ) where
+    ( segSegIntersection
+    , raySegIntersection
+    , segRayIntersection
+    , segSegDoesIntersect
+    , raySegDoesIntersect
+    , segRayDoesIntersect ) where
 
+import           Data.Maybe
+import           Geometry
 import           Linear.V2
 import           Linear.Vector
 
-type Segment a = (V2 a, V2 a)
+(×) :: Num a => V2 a -> V2 a -> a
+(×) = crossZ
 
--- https://algorithmtutor.com/Computational-Geometry/Check-if-two-line-segment-intersect/
+-- https://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect/
 
-direction :: (Num a, Ord a) => V2 a -> V2 a -> V2 a -> a
-direction v0 v1 v2 = crossZ (v2 ^-^ v0) (v1 ^-^ v0)
+lineIntersectParameters :: (Eq a, Fractional a) =>
+    (V2 a, V2 a) -> (V2 a, V2 a) -> Maybe (a, a)
+lineIntersectParameters (p, r) (q, s)
+  | rs == 0   = Nothing
+  | otherwise = Just (t, u)
+  where qp =  q ^-^ p
+        rs =  r  ×  s
+        t  = qp  ×  s / rs
+        u  = qp  ×  r / rs
 
-onSegment :: (Num a, Ord a) => Segment a -> V2 a -> Bool
-onSegment (V2 v0x v0y, V2 v1x v1y) (V2 px py) =
-    (min v0x v1x <= px) &&
-    (max v0x v1x >= px) &&
-    (min v0y v1y <= py) &&
-    (max v0y v1y >= py)
+segSegIntersection :: (Eq a, Ord a, Fractional a) =>
+    Segment a -> Segment a -> Maybe (V2 a)
+segSegIntersection seg0 seg1 =
+    let p = fst seg0
+        q = fst seg1
+        r = snd seg0 ^-^ p
+        s = snd seg1 ^-^ q
+     in case lineIntersectParameters (p, r) (q, s) of
+          Nothing     -> Nothing
+          Just (t, u) -> if 0 <= t && t <= 1 && 0 <= u && u <= 1
+                            then Just (p ^+^ r ^* t)
+                            else Nothing
 
-intersect :: (Num a, Ord a) => Segment a -> Segment a -> Bool
-intersect (v0, v1) (v2, v3) =
-    let d0 = direction v2 v3 v0
-        d1 = direction v2 v3 v1
-        d2 = direction v0 v1 v2
-        d3 = direction v0 v1 v3
-     in (((d0 > 0 && d1 < 0) || (d0 < 0 && d1 > 0)) &&
-        ((d2 > 0 && d3 < 0) || (d2 < 0 && d3 > 0))) ||
-        d0 == 0 && onSegment (v2, v3) v0            ||
-        d1 == 0 && onSegment (v2, v3) v1            ||
-        d2 == 0 && onSegment (v0, v1) v2            ||
-        d3 == 0 && onSegment (v0, v1) v3
+raySegIntersection :: (Eq a, Ord a, Fractional a) =>
+    Ray a -> Segment a -> Maybe (V2 a)
+raySegIntersection ray seg =
+    let p = fst ray
+        q = fst seg
+        r = snd ray
+        s = snd seg ^-^ q
+     in case lineIntersectParameters (p, r) (q, s) of
+          Nothing     -> Nothing
+          Just (t, u) -> if 0 <= t && 0 <= u && u <= 1
+                            then Just (p ^+^ r ^* t)
+                            else Nothing
+
+segRayIntersection :: (Eq a, Ord a, Fractional a) =>
+    Segment a -> Ray a -> Maybe (V2 a)
+segRayIntersection = flip raySegIntersection
+
+segSegDoesIntersect :: (Eq a, Ord a, Fractional a) =>
+    Segment a -> Segment a -> Bool
+segSegDoesIntersect seg0 seg1 = isJust $ segSegIntersection seg0 seg1
+
+raySegDoesIntersect :: (Eq a, Ord a, Fractional a) =>
+    Ray a -> Segment a -> Bool
+raySegDoesIntersect ray seg = isJust $ raySegIntersection ray seg
+
+segRayDoesIntersect :: (Eq a, Ord a, Fractional a) =>
+    Segment a -> Ray a -> Bool
+segRayDoesIntersect = flip raySegDoesIntersect

@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections   #-}
 module Car
     ( -- <Types>
       CarParams(..)
@@ -24,6 +25,7 @@ module Car
     , newCar
     , localCorners
     , globalCorners
+    , shootRays
       -- </Util>
       -- <State>
     , moveCar
@@ -38,7 +40,8 @@ import           Control.Lens
 import           Control.Monad.State
 import           Data.Function
 import           Data.Word
-import qualified Geometry            as G
+import qualified Geometry              as G
+import qualified Geometry.Intersection as GI
 import           SDL.Vect
 
 data CarParams = CarParams { _width          :: Double
@@ -81,6 +84,15 @@ newCar params startPos startRot = Car { _params = params
                                       , _velocity = pure 0
                                       , _rotation = startRot + pi
                                       , _rotationVelocity = 0 }
+
+shootRays :: Double -> Int -> Car -> [G.Ray Double]
+shootRays angl rays car =
+    let o      = car^.position
+        shift  = car^.rotation - pi / 2
+        θ      = angl / fromIntegral (rays-1)
+        angles = map (+shift) [-angl/2, -angl/2 + θ .. angl/2]
+        ds     = map angle angles
+     in map (o,) ds
 
 localCorners :: Car -> [V2 Double]
 localCorners car = let w = view (params . width) car / 2

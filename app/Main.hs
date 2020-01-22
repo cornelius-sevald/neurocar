@@ -130,3 +130,6 @@ getUserInput = do
                      , (dHeld || rightHeld, GoRight)
                      , (qPressed || escPressed || quitRequested, Quit)]
     return $ boolList ifList
+
+getNetworkInput :: NN.Network -> World -> Input
+getNetworkInput nn w = undefined

@@ -21,6 +21,7 @@ import           Data.Word
 import           Linear.V2
 import           Track
 import           Control.Applicative
+import qualified AI.NeuralNetwork as NN
 
 data GameState = GameRunning
                | GameQuit
@@ -77,3 +78,8 @@ gameLoop inputs deltaTime world =
         ; let wallHit = carIntersects (view track world) (view car world)
         ; when wallHit (gameState .= GameLost >> empty) }
      in execState worldState world
+
+worldToNNInput :: World -> [Double]
+worldToNNInput world = let x0 = world^.car.rotationVelocity
+                           x1 = world^.car.velocity
+                        in undefined

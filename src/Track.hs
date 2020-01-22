@@ -9,19 +9,24 @@ module Track
     , getCheckpoint
     , fromFile
     , carIntersectsCheckpoint
-    , carIntersects ) where
+    , carIntersects
+    , rayIntersection ) where
 
 import qualified Car                   as C
 import           Control.Lens
 import           Control.Monad.State
+import           Data.Function
+import           Data.List
 import           Data.List.Split
+import           Data.Maybe
 import           Data.Word             (Word8)
-import           Geometry
-import           Geometry.Intersection
+import qualified Geometry              as G
+import qualified Geometry.Intersection as GI
 import           Linear.V2
 import           Linear.V4             (V4)
 import           Linear.Vector
 import           System.IO
+import           Util
 
 -- An inner and outer ring
 type Rings a = [(V2 a, V2 a)]
@@ -37,14 +42,6 @@ makeLenses ''Track
 
 getCheckpoint :: Track a -> (V2 a, V2 a)
 getCheckpoint track = cycle (view rings track) !! view checkpointIndex track
-
--- Utility function
--- Link a list into a list of pairs, sharing one common element in each pair
-linkList :: [a] -> [(a, a)]
-linkList []         = []
-linkList [a]        = error "linkList - singleton list"
-linkList [x0, x1]   = [(x0, x1)]
-linkList (x0:x1:xs) = (x0, x1) : linkList (x1:xs)
 
 -- Parse a track from a file.
 fromFile :: V4 Word8 -> FilePath -> IO (Track Double)
@@ -67,12 +64,12 @@ carIntersects :: Track Double -> C.Car -> Bool
 carIntersects track car =
     let corners  = C.globalCorners car
         cornersC = last corners : corners
-        ringC    = last (view rings track) : view rings track
+        ringC    = last (track^.rings) : (track^.rings)
         carSeg   = linkList cornersC
         innerSeg = linkList $ map fst ringC
         outerSeg = linkList $ map snd ringC
-     in or (intersect <$> carSeg <*> outerSeg) ||
-        or (intersect <$> carSeg <*> innerSeg)
+     in or (GI.segSegDoesIntersect <$> carSeg <*> outerSeg) ||
+        or (GI.segSegDoesIntersect <$> carSeg <*> innerSeg)
 
 carIntersectsCheckpoint :: Track Double -> C.Car -> Bool
 carIntersectsCheckpoint track car =
@@ -80,4 +77,18 @@ carIntersectsCheckpoint track car =
         cornersC   = last corners : corners
         carSeg     = linkList cornersC
         checkpoint = getCheckpoint track
-     in or (intersect checkpoint <$> carSeg)
+     in or (GI.segSegDoesIntersect checkpoint <$> carSeg)
+
+-- Get the closest interscetion point of a ray
+-- and the map, if any
+rayIntersection :: Track Double -> G.Ray Double -> Maybe (V2 Double)
+rayIntersection track ray =
+    let o               = fst ray
+        ringC           = last (track^.rings) : (track^.rings)
+        innerSeg        = linkList $ map fst ringC
+        outerSeg        = linkList $ map snd ringC
+        intersections   = catMaybes $ (GI.raySegIntersection ray <$> innerSeg) ++
+            (GI.raySegIntersection ray <$> outerSeg)
+     in case intersections of
+          []            -> Nothing
+          intersection' -> Just $ minimumBy (compare `on` (\p -> G.segSqLength (o, p))) intersections
