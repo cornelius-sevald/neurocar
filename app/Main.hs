@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import           AI.GeneticAlgorithm   as GA
 import           AI.NeuralNetwork      as NN
 import qualified Car                   as C
 import           Control.Lens
@@ -65,40 +64,33 @@ seed = 114117116104
 
 main :: IO ()
 main = do
+    -- Neural network
     let gen = mkStdGen seed
-    let fitfunc = LA.sumElements . feedforward (LA.fromList [-5..4])
-    let mutfunc = GA.mutate 0.1 1
-    let indGen = NN.newNetwork [10, 15, 15, 10]
-    let generations = 100
-    let popSize = 1000
-    let (evolutions, gen') = runState (evolves generations popSize indGen fitfunc mutfunc) gen
-    printf "MIN \t AVG \t MAX\n"
-    forM_ evolutions $ \e -> do
-        let popFit = fitfunc <$> e
-        let minFit = minimum popFit
-        let avgFit = sum popFit / fromIntegral (length popFit)
-        let maxFit = maximum popFit
-        printf "%f \t %f \t %f\n" minFit avgFit maxFit
-{-
+    let (nn, gen') = runState (NN.newNetwork [10, 15, 15, 10]) gen
+    -- SDL initialization
     initializeAll
     TTF.initialize
+    -- Variable initialization
     window <- createWindow "Neuro Car" windowsConfig
     renderer <- createRenderer window (-1) rendererConfig
     font <- TTF.load fontPath fontSize
     gameTrack <- T.fromFile (V4 0 255 0 255) "tracks/track001.nct"
-    let carPos = V2 (negate 20) (negate 10)
-    let carRot = 0
     gameTicks <- newIORef (0 :: Word32)
-    let appLoop w = do
-        { drawWorld renderer font w
-        ; input <- getUserInput
-        ; oldTick   <- readIORef gameTicks
-        ; nowTick <- ticks
-        ; let deltaTime = fromIntegral (nowTick - oldTick) / 1000
-        ; writeIORef gameTicks nowTick
-        ; return $ gameLoop input deltaTime w }
-     in void $ iterateUntilM (\w -> view gameState w == GameQuit) appLoop (initWorld carParams gameTrack gameTime)
--}
+    -- App loop
+    let appLoop' = appLoop renderer font gameTicks
+    void $ iterateUntilM (\w -> view gameState w == GameQuit)
+            appLoop' (initWorld carParams gameTrack gameTime)
+
+appLoop :: Renderer -> TTF.Font -> IORef Word32 -> World -> IO World
+appLoop ren font gameTicks w = do
+    drawWorld ren font w
+    input <- getUserInput
+    oldTick   <- readIORef gameTicks
+    nowTick <- ticks
+    let deltaTime = fromIntegral (nowTick - oldTick) / 1000
+    writeIORef gameTicks nowTick
+    return $ gameLoop input deltaTime w
+
 
 boolList :: [(Bool, a)] -> [a]
 boolList []              = []
