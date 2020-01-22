@@ -1,20 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import qualified Car                 as C
+import           AI.GeneticAlgorithm   as GA
+import           AI.NeuralNetwork      as NN
+import qualified Car                   as C
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Loops
 import           Control.Monad.State
 import           Data.IORef
-import           Data.Word           (Word32)
+import           Data.Word             (Word32)
 import           Graphics
+import           Numeric.LinearAlgebra as LA
 import           SDL
+import qualified SDL.Font              as TTF
 import           SDL.Time
-import qualified Track               as T
-import           World
-import qualified SDL.Font as TTF
 import           System.IO
+import           System.Random
+import           Text.Printf
+import qualified Track                 as T
+import           World
 
 windowsConfig :: WindowConfig
 windowsConfig = WindowConfig
@@ -55,8 +60,26 @@ fontPath = "fonts/VCR_OSD_MONO.ttf"
 gameTime :: Double
 gameTime = 60
 
+seed :: Int
+seed = 114117116104
+
 main :: IO ()
 main = do
+    let gen = mkStdGen seed
+    let fitfunc = LA.sumElements . feedforward (LA.fromList [-5..4])
+    let mutfunc = GA.mutate 0.1 1
+    let indGen = NN.newNetwork [10, 15, 15, 10]
+    let generations = 100
+    let popSize = 1000
+    let (evolutions, gen') = runState (evolves generations popSize indGen fitfunc mutfunc) gen
+    printf "MIN \t AVG \t MAX\n"
+    forM_ evolutions $ \e -> do
+        let popFit = fitfunc <$> e
+        let minFit = minimum popFit
+        let avgFit = sum popFit / fromIntegral (length popFit)
+        let maxFit = maximum popFit
+        printf "%f \t %f \t %f\n" minFit avgFit maxFit
+{-
     initializeAll
     TTF.initialize
     window <- createWindow "Neuro Car" windowsConfig
@@ -75,6 +98,7 @@ main = do
         ; writeIORef gameTicks nowTick
         ; return $ gameLoop input deltaTime w }
      in void $ iterateUntilM (\w -> view gameState w == GameQuit) appLoop (initWorld carParams gameTrack gameTime)
+-}
 
 boolList :: [(Bool, a)] -> [a]
 boolList []              = []
