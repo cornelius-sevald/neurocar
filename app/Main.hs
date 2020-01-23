@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import           AI.GeneticAlgorithm   as GA
 import           AI.NeuralNetwork      as NN
 import qualified Car                   as C
 import           Control.Lens
@@ -9,6 +10,8 @@ import           Control.Monad
 import           Control.Monad.Loops
 import           Control.Monad.State
 import           Data.Foldable
+import           Data.Function
+import           Data.Functor.Identity
 import           Data.IORef
 import           Data.Word             (Word32)
 import           Geometry              as G
@@ -73,22 +76,28 @@ seed = 114117116104
 
 main :: IO ()
 main = do
-    -- Neural network
-    let gen = mkStdGen seed
-    let (nn, gen') = runState (NN.newNetwork [3+aiRayCount, 15, 15, 2]) gen
-    -- SDL initialization
-    initializeAll
-    TTF.initialize
-    -- Variable initialization
-    window <- createWindow "Neuro Car" windowsConfig
-    renderer <- createRenderer window (-1) rendererConfig
-    font <- TTF.load fontPath fontSize
+    -- Game track
     gameTrack <- T.fromFile (V4 0 255 0 255) "tracks/track001.nct"
-    gameTicks <- newIORef (0 :: Word32)
+
     -- App loop
-    let appLoop = aiLoop renderer font gameTicks nn
-    void $ iterateUntilM (\w -> view gameState w == GameQuit)
-            appLoop (initWorld carParams gameTrack gameTime)
+    let runGame nn = runIdentity $ iterateUntilM (\w -> view gameState w /= GameRunning)
+            (Identity . aiLoop nn) (initWorld carParams gameTrack gameTime)
+
+    -- Evolution
+    let gen = mkStdGen seed
+    let fitfunc = fromIntegral . view score . runGame
+    let mutfunc = GA.mutate 0.1 1
+    let indGen = NN.newNetwork [3+aiRayCount, 15, 15, 2]
+    let generations = 20
+    let popSize = 50
+    let (evolutions, gen') = runState (evolves generations popSize indGen fitfunc mutfunc) gen
+    printf "GEN \t MIN \t AVG \t MAX\n"
+    forM_ (zip ([0..] :: [Int]) evolutions) $ \(n, e) -> do
+        let popFit = fitfunc <$> e
+        let minFit = minimum popFit
+        let avgFit = sum popFit / fromIntegral (length popFit)
+        let maxFit = maximum popFit
+        printf "%d \t %f \t %f \t %f\n" n minFit avgFit maxFit
 
 playerLoop :: Renderer -> TTF.Font -> IORef Word32 -> World -> IO World
 playerLoop ren font gameTicks w = do
@@ -100,17 +109,11 @@ playerLoop ren font gameTicks w = do
     writeIORef gameTicks nowTick
     return $ worldTick input deltaTime w
 
-aiLoop :: Renderer -> TTF.Font -> IORef Word32 -> NN.Network -> World -> IO World
-aiLoop ren font gameTicks nn w = do
-    drawWorld ren font w
-    userInput <- getUserInput
-    let aiInput = getNetworkInput nn w
-    let input = userInput ++ aiInput
-    oldTick <- readIORef gameTicks
-    nowTick <- ticks
-    let deltaTime = fromIntegral (nowTick - oldTick) / 1000
-    writeIORef gameTicks nowTick
-    return $ worldTick input deltaTime w
+aiLoop :: NN.Network -> World -> World
+aiLoop nn w =
+    let input = getNetworkInput nn w
+        deltaTime = 0.1
+     in worldTick input deltaTime w
 
 
 boolList :: [(Bool, a)] -> [a]
