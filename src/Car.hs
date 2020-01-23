@@ -23,6 +23,7 @@ module Car
       -- </Lenses>
       -- <Util>
     , newCar
+    , localVelocity
     , localCorners
     , globalCorners
     , shootRays
@@ -93,6 +94,9 @@ shootRays angl rays car =
         angles = map (+shift) [-angl/2, -angl/2 + θ .. angl/2]
         ds     = map angle angles
      in map (o,) ds
+
+localVelocity :: Car -> V2 Double
+localVelocity car = G.rotate (negate $ car^.rotation + pi) (car^.velocity)
 
 localCorners :: Car -> [V2 Double]
 localCorners car = let w = view (params . width) car / 2

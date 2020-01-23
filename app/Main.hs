@@ -85,7 +85,7 @@ appLoop :: Renderer -> TTF.Font -> IORef Word32 -> World -> IO World
 appLoop ren font gameTicks w = do
     drawWorld ren font w
     input <- getUserInput
-    oldTick   <- readIORef gameTicks
+    oldTick <- readIORef gameTicks
     nowTick <- ticks
     let deltaTime = fromIntegral (nowTick - oldTick) / 1000
     writeIORef gameTicks nowTick
