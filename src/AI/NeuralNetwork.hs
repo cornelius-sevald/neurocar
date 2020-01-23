@@ -6,13 +6,16 @@ module AI.NeuralNetwork
     , weights
     , sigmoid
     , newNetwork
-    , feedforward ) where
+    , feedforward
+    , toFile
+    , fromFile ) where
 
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.State
 import           Data.Random.Normal
 import           Numeric.LinearAlgebra
+import           System.IO
 import           System.Random
 
 data Network = Network { _layerSizes :: [Int]
@@ -44,3 +47,24 @@ newNetwork sizes = do
 feedforward :: Vector Double -> Network -> Vector Double
 feedforward input nn = foldl (\a (b, w) -> cmap sigmoid ((w #> a) + b)) input bw
     where bw = zip (nn^.biases) (nn^.weights)
+
+toFile :: FilePath -> Network -> IO ()
+toFile filepath nn =
+    let headerStr  = show (nn^.layerSizes) ++ "\n"
+        biasesStr  = unlines $ show . toList  <$> (nn^.biases)
+        weightsStr = unlines $ show . toLists <$> (nn^.weights)
+        nnStr      = headerStr ++ biasesStr ++ weightsStr
+     in writeFile filepath nnStr
+
+fromFile :: FilePath -> IO Network
+fromFile filepath = withFile filepath ReadMode (\handle -> do
+    layerSizes' <- (read :: String -> [Int]) <$> hGetLine handle
+    biases'     <- forM (tail layerSizes') $ \_ -> do
+        line <- hGetLine handle
+        return $ fromList $ (read :: String -> [Double]) line
+    weights'    <- forM (tail layerSizes') $ \_ -> do
+        line <- hGetLine handle
+        return $ fromLists $ (read :: String -> [[Double]]) line
+    return $ Network { _layerSizes = layerSizes'
+                     , _biases     = biases'
+                     , _weights    = weights' })
