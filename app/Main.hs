@@ -18,7 +18,6 @@ import           SDL
 import qualified SDL.Font              as TTF
 import           SDL.Time
 import           System.IO
-import           System.Random
 import           Text.Printf
 import qualified Track                 as T
 import           World
@@ -74,8 +73,7 @@ seed = 114117116104
 main :: IO ()
 main = do
     -- Neural network
-    let gen = mkStdGen seed
-    let (nn, gen') = runState (NN.newNetwork [3+aiRayCount, 15, 15, 2]) gen
+    nn <- NN.fromFile "cars/savedcar.nn"
     -- SDL initialization
     initializeAll
     TTF.initialize
