@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 module AI.GeneticAlgorithm
     ( mutate
     , proportionalSelection
@@ -6,19 +5,20 @@ module AI.GeneticAlgorithm
     , evolve
     , evolves) where
 
-import           AI.NeuralNetwork      as NN
+import           AI.NeuralNetwork            as NN
 import           Control.Lens
 import           Control.Monad.State
+import           Control.Parallel.Strategies
+import           Data.Function
 import           Data.Random.Normal
-import qualified Data.Vector           as V
-import qualified Data.Vector.Generic   as VG
+import qualified Data.Vector                 as V
+import qualified Data.Vector.Generic         as VG
 import           Numeric.LinearAlgebra
 import           System.Random
 
 type Genome = NN.Network
 type Individual = Genome
 type Population = [Individual]
-
 
 mut :: Double -> Double -> Double -> State StdGen Double
 mut rate amount val = do
@@ -35,10 +35,10 @@ mutate rate amount nn = do
     let newNN = execState (biases .= newBiases >> weights .= newWeights) nn
     return newNN
 
-proportionalSelection :: (Random a, Ord a, Num a) =>
+proportionalSelection :: (Random a, Ord a, Num a, NFData a) =>
     (Individual -> a) -> Population -> State StdGen Population
 proportionalSelection fitfunc pop =
-    let fit      = map fitfunc pop
+    let fit      = parMap rdeepseq fitfunc pop
         accFit   = scanl1 (+) fit
         choose p = snd $ head $ dropWhile (\t -> p > fst t) (zip accFit pop)
      in forM pop $ \_ -> do
