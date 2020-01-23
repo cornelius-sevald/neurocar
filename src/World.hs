@@ -9,7 +9,7 @@ module World
     , score
     , timeLeft
     , initWorld
-    , gameLoop
+    , worldTick
     ) where
 
 import           Car
@@ -64,8 +64,8 @@ initWorld carParams track time = let carPos = track^.carStartPos
                                            , _score=0
                                            , _timeLeft=time }
 
-gameLoop :: [Input] -> Double -> World -> World
-gameLoop inputs deltaTime world =
+worldTick :: [Input] -> Double -> World -> World
+worldTick inputs deltaTime world =
     let worldState = maybeT (return ()) return $ do
         { when (Quit `elem` inputs) (gameState .= GameQuit)
         ; guard $ view gameState world == GameRunning
@@ -78,8 +78,3 @@ gameLoop inputs deltaTime world =
         ; let wallHit = carIntersects (view track world) (view car world)
         ; when wallHit (gameState .= GameLost >> empty) }
      in execState worldState world
-
-worldToNNInput :: World -> [Double]
-worldToNNInput world = let x0 = world^.car.rotationVelocity
-                           x1 = world^.car.velocity
-                        in undefined

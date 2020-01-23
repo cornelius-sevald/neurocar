@@ -36,9 +36,6 @@ drawWorld ren font world = do
       GameLost    -> rendererDrawColor ren $= V4 255   0 0 255
       TimeUp      -> rendererDrawColor ren $= V4 155 155 0 255
     drawTrack ren (view track world)
-    --     Draw debug rays from the car
-    --rendererDrawColor ren $= V4 100 100 100 255
-    --drawDebugCarRays ren world
     --     Draw info to the player
     rendererDrawColor ren $= V4 255 255 255 255
     drawInfo ren font world

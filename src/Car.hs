@@ -116,7 +116,11 @@ accelerateCar :: V2 Double -> State Car ()
 accelerateCar amount = state $ \car -> ((), over velocity (+ amount) car)
 
 rotateCar :: Double -> State Car ()
-rotateCar amount = state $ \car -> ((), over rotation (+ amount) car)
+rotateCar amount = do
+    rotation += amount
+    car <- get
+    when (car^.rotation > 2 * pi) (rotation -= 2 * pi)
+    when (car^.rotation < 0)      (rotation += 2 * pi)
 
 rotAccelerateCar :: Double -> State Car ()
 rotAccelerateCar amount = state $ \car -> ((), over rotationVelocity (+ amount) car)
