@@ -1,5 +1,7 @@
 module AI.GeneticAlgorithm
-    ( mutate
+    ( individualGenome
+    , individualFitness
+    , mutate
     , proportionalSelection
     , getBasePopulation
     , evolve
@@ -10,15 +12,18 @@ import           Control.Lens
 import           Control.Monad.State
 import           Control.Parallel.Strategies
 import           Data.Function
+import           Data.Maybe
 import           Data.Random.Normal
 import qualified Data.Vector                 as V
 import qualified Data.Vector.Generic         as VG
 import           Numeric.LinearAlgebra
 import           System.Random
 
-type Genome = NN.Network
-type Individual = Genome
-type Population = [Individual]
+type Genome       = NN.Network
+-- An individual with a genome and fitness
+data Individual a = Individual Genome a
+    deriving (Eq, Show)
+type Population a = V.Vector (Individual a)
 
 mut :: Double -> Double -> Double -> State StdGen Double
 mut rate amount val = do
@@ -27,37 +32,54 @@ mut rate amount val = do
        then fmap (\x -> val + x * amount) (state normal)
        else return val
 
-mutate :: Double -> Double -> Individual -> State StdGen Individual
-mutate rate amount nn = do
+toIndividual :: (Genome -> a) -> Genome -> Individual a
+toIndividual fitfunc genome = Individual genome (fitfunc genome)
+
+toPopulation :: (Genome -> a) -> V.Vector Genome -> V.Vector (Individual a)
+toPopulation fitfunc genomes = let pop = V.map (toIndividual fitfunc) genomes
+                                in pop `using` parTraversable rseq
+
+individualGenome :: Individual a -> Genome
+individualGenome (Individual g _) = g
+
+individualFitness :: Individual a -> a
+individualFitness (Individual _ f) = f
+
+mutate :: Double -> Double -> Genome -> State StdGen Genome
+mutate rate amount genome = do
     let cmut = mut rate amount
-    newBiases  <- mapM (VG.mapM    cmut) (nn^.biases)
-    newWeights <- mapM (mapMatrixM cmut) (nn^.weights)
-    let newNN = execState (biases .= newBiases >> weights .= newWeights) nn
+    newBiases  <- mapM (VG.mapM    cmut) (genome^.biases)
+    newWeights <- mapM (mapMatrixM cmut) (genome^.weights)
+    let newNN = execState (biases .= newBiases >> weights .= newWeights) genome
     return newNN
 
 proportionalSelection :: (Random a, Ord a, Num a, NFData a) =>
-    (Individual -> a) -> Population -> State StdGen Population
-proportionalSelection fitfunc pop =
-    let fit      = parMap rdeepseq fitfunc pop
-        accFit   = scanl1 (+) fit
-        choose p = snd $ head $ dropWhile (\t -> p > fst t) (zip accFit pop)
+    Population a -> State StdGen (Population a)
+proportionalSelection pop =
+    let fitness  = individualFitness <$> pop
+        accFit   = V.scanl1 (+) fitness
+        choose p = snd $ fromJust $ V.find (\t -> p <= fst t) (V.zip accFit pop)
      in forM pop $ \_ -> do
-         p <- state $ randomR (0, last accFit)
+         p <- state $ randomR (0, V.last accFit)
          return $ choose p
 
-getBasePopulation :: State StdGen Individual -> Int -> State StdGen Population
-getBasePopulation generator popSize = replicateM popSize generator
+getBasePopulation :: (Genome -> a) -> State StdGen Genome ->
+    Int -> State StdGen (Population a)
+getBasePopulation fitfunc genomeGen popSize =
+    toPopulation fitfunc <$> V.replicateM popSize genomeGen
 
-evolve :: (Individual -> Double) -> (Individual -> State StdGen Individual) ->
-    Population -> State StdGen Population
+evolve :: (Genome -> Double) -> (Genome -> State StdGen Genome) ->
+    Population Double -> State StdGen (Population Double)
 evolve fitfunc mutfunc pop = do
-    selected <- proportionalSelection fitfunc pop
-    mapM mutfunc selected
+    selected <- proportionalSelection pop
+    mutated  <- mapM (\(Individual g _) -> mutfunc g) selected
+    return $ toPopulation fitfunc mutated
 
-evolves :: Int -> Int -> State StdGen Individual -> (Individual -> Double) ->
-    (Individual -> State StdGen Individual) -> State StdGen [Population]
-evolves generations popSize indGen fitfunc mutfunc = do
-    basePop <- getBasePopulation indGen popSize
+evolves :: Int -> Int -> State StdGen Genome ->
+    (Genome -> Double) -> (Genome -> State StdGen Genome) ->
+        State StdGen [Population Double]
+evolves generations popSize genomeGen fitfunc mutfunc = do
+    basePop <- getBasePopulation fitfunc genomeGen popSize
     let evofunc = evolve fitfunc mutfunc
     evolutions <- V.iterateNM generations evofunc basePop
     return $ V.toList evolutions

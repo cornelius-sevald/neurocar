@@ -13,6 +13,7 @@ import           Data.Foldable
 import           Data.Function
 import           Data.Functor.Identity
 import           Data.IORef
+import qualified Data.Vector           as V
 import           Data.Word             (Word32)
 import           Geometry              as G
 import           Graphics
@@ -89,15 +90,15 @@ main = do
     let mutfunc = GA.mutate 0.1 1
     let indGen = NN.newNetwork [3+aiRayCount, 15, 15, 2]
     let generations = 20
-    let popSize = 50
+    let popSize = 500
     let (evolutions, gen') = runState (evolves generations popSize indGen fitfunc mutfunc) gen
     printf "GEN \t MIN \t AVG \t MAX\n"
-    forM_ (zip ([0..] :: [Int]) evolutions) $ \(n, e) -> do
-        let popFit = fitfunc <$> e
-        let minFit = minimum popFit
-        let avgFit = sum popFit / fromIntegral (length popFit)
-        let maxFit = maximum popFit
-        printf "%d \t %f \t %f \t %f\n" n minFit avgFit maxFit
+    forM_ (zip ([0..] :: [Int]) evolutions) $ \(n, pop) -> do
+        let fitness = individualFitness <$> pop
+        let minFit = V.minimum fitness
+        let avgFit = sum fitness / fromIntegral (V.length fitness)
+        let maxFit = V.maximum fitness
+        printf "%d \t %.2f \t %.2f \t %.2f\n" n minFit avgFit maxFit
 
 playerLoop :: Renderer -> TTF.Font -> IORef Word32 -> World -> IO World
 playerLoop ren font gameTicks w = do
