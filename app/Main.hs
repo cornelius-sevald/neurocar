@@ -105,8 +105,10 @@ aiLoop ren font gameTicks nn w = do
     userInput <- getUserInput
     let aiInput = getNetworkInput nn w
     let input = userInput ++ aiInput
-    let deltaTime = 0.1
-    delay 100
+    oldTick <- readIORef gameTicks
+    nowTick <- ticks
+    let deltaTime = fromIntegral (nowTick - oldTick) / 1000
+    writeIORef gameTicks nowTick
     return $ worldTick input deltaTime w
 
 
