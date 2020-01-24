@@ -73,7 +73,8 @@ seed = 114117116104
 main :: IO ()
 main = do
     -- Neural network
-    nn <- NN.fromFile "cars/savedcar.nn"
+    carName <- putStr "Car name: " >> hFlush stdout >> getLine
+    nn <- NN.fromFile $ "cars/" ++ carName
     -- SDL initialization
     initializeAll
     TTF.initialize
@@ -104,10 +105,8 @@ aiLoop ren font gameTicks nn w = do
     userInput <- getUserInput
     let aiInput = getNetworkInput nn w
     let input = userInput ++ aiInput
-    oldTick <- readIORef gameTicks
-    nowTick <- ticks
-    let deltaTime = fromIntegral (nowTick - oldTick) / 1000
-    writeIORef gameTicks nowTick
+    let deltaTime = 0.1
+    delay 100
     return $ worldTick input deltaTime w
 
 
