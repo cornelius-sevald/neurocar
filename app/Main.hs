@@ -74,7 +74,7 @@ aiRayCount :: Int
 aiRayCount = 7
 
 seed :: Int
-seed = 114117116104
+seed = 22
 
 main :: IO ()
 main = do
@@ -90,8 +90,8 @@ main = do
     let fitfunc = fromIntegral . view score . runGame
     let mutfunc = GA.mutate 0.1 1
     let indGen = NN.newNetwork [3+aiRayCount, 15, 15, 2]
-    let generations = 20
-    let popSize = 50
+    let generations = 100
+    let popSize = 120
     let (evolutions, gen') = runState (evolves generations popSize indGen fitfunc mutfunc) gen
     let baw = bestAverageWorst evolutions
     printf "GEN \t MIN \t AVG \t MAX\n"
@@ -116,7 +116,7 @@ playerLoop ren font gameTicks w = do
 aiLoop :: NN.Network -> World -> World
 aiLoop nn w =
     let input = getNetworkInput nn w
-        deltaTime = 0.1
+        deltaTime = 1/24
      in worldTick input deltaTime w
 
 
