@@ -7,3 +7,5 @@ linkList [a]        = error "linkList - singleton list"
 linkList [x0, x1]   = [(x0, x1)]
 linkList (x0:x1:xs) = (x0, x1) : linkList (x1:xs)
 
+fst3 :: (a, b, c) -> a
+fst3 (x, _, _) = x

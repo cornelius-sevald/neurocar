@@ -25,6 +25,7 @@ import           System.IO
 import           System.Random
 import           Text.Printf
 import qualified Track                 as T
+import           Util
 import           World
 
 windowsConfig :: WindowConfig
@@ -90,15 +91,17 @@ main = do
     let mutfunc = GA.mutate 0.1 1
     let indGen = NN.newNetwork [3+aiRayCount, 15, 15, 2]
     let generations = 20
-    let popSize = 500
+    let popSize = 50
     let (evolutions, gen') = runState (evolves generations popSize indGen fitfunc mutfunc) gen
+    let baw = bestAverageWorst evolutions
     printf "GEN \t MIN \t AVG \t MAX\n"
-    forM_ (zip ([0..] :: [Int]) evolutions) $ \(n, pop) -> do
-        let fitness = individualFitness <$> pop
-        let minFit = V.minimum fitness
-        let avgFit = sum fitness / fromIntegral (V.length fitness)
-        let maxFit = V.maximum fitness
+    forM_ (zip ([0..] :: [Int]) baw) $ \(n, (b, a, w)) -> do
+        let minFit = individualFitness w
+        let avgFit = a
+        let maxFit = individualFitness b
         printf "%d \t %.2f \t %.2f \t %.2f\n" n minFit avgFit maxFit
+    let bestIndividual = fst3 $ maximumBy (compare `on` individualFitness . fst3) baw
+    NN.toFile ("cars/bestcar-" ++ show seed ++ ".nn") (individualGenome bestIndividual)
 
 playerLoop :: Renderer -> TTF.Font -> IORef Word32 -> World -> IO World
 playerLoop ren font gameTicks w = do
@@ -172,3 +175,12 @@ getNetworkInput nn w =
                       ; when (head y > 2/3) (push GoForward)
                       ; when (y !! 1 < 1/3) (push GoLeft)
                       ; when (y !! 1 > 2/3) (push GoRight) }) []
+
+bestAverageWorst :: (Fractional a, Ord a) =>
+    [GA.Population a] -> [(GA.Individual a, a, GA.Individual a)]
+bestAverageWorst = reverse . foldl (\acc pop ->
+        let fitness = individualFitness <$> pop
+            best = V.maximumBy (compare `on` individualFitness) pop
+            avgFit = sum fitness / fromIntegral (V.length fitness)
+            worst = V.minimumBy (compare `on` individualFitness) pop
+         in (best, avgFit, worst) : acc) []

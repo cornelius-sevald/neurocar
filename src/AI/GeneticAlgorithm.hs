@@ -1,5 +1,8 @@
 module AI.GeneticAlgorithm
-    ( individualGenome
+    ( Genome
+    , Individual
+    , Population
+    , individualGenome
     , individualFitness
     , mutate
     , proportionalSelection
