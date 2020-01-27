@@ -8,7 +8,8 @@ module AI.GeneticAlgorithm
     , proportionalSelection
     , getBasePopulation
     , evolve
-    , evolves) where
+    , evolves
+    , bestAverageWorst ) where
 
 import           AI.NeuralNetwork            as NN
 import           Control.Lens
@@ -86,6 +87,15 @@ evolves generations popSize genomeGen fitfunc mutfunc = do
     let evofunc = evolve fitfunc mutfunc
     evolutions <- V.iterateNM generations evofunc basePop
     return $ V.toList evolutions
+
+bestAverageWorst :: (Fractional a, Ord a) =>
+    [Population a] -> [(Individual a, a, Individual a)]
+bestAverageWorst = reverse . foldl (\acc pop ->
+        let fitness = individualFitness <$> pop
+            best = V.maximumBy (compare `on` individualFitness) pop
+            avgFit = sum fitness / fromIntegral (V.length fitness)
+            worst = V.minimumBy (compare `on` individualFitness) pop
+         in (best, avgFit, worst) : acc) []
 
 mapMatrixM :: (Element a, Element b, Monad m) =>
     (a -> m b) -> Matrix a -> m (Matrix b)
