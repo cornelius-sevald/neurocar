@@ -27,15 +27,15 @@ evolveCar :: Int -> Int -> Int -> Double -> Double -> Double -> Word32 ->
 evolveCar seed generations popSize mutChance mutStrength time deltaTicks carParams track = do
     let gen = mkStdGen seed
     let world = initWorld carParams track time
-    let evolveLoop nn w = gameLoop (const $ return ()) (return $ getNetworkInput nn w) (Right deltaTicks) w
+    let evolveLoop nn = gameLoop' (getNetworkInput nn) deltaTicks
     let runGame nn = iterateUntilM (\w -> w^.gameState /= GameRunning) (evolveLoop nn) world
     let fitfunc nn = do {
           finalWorld <- runGame nn
         ; return $ fromIntegral $ view score finalWorld }
     let mutfunc = GA.mutate mutChance mutStrength
     let indGen = NN.newNetwork [3+rayCount, 15, 15, 2]
-    let evolvesM = liftM (\f -> evolves generations popSize indGen f mutfunc)
-    return $ evalState evoState
+    let evoFunc = evolvesM generations popSize indGen fitfunc mutfunc
+    evalStateT evoFunc gen
 
 
 getNetworkInput :: NN.Network -> World -> [Input]

@@ -28,7 +28,7 @@ makeLenses ''Network
 sigmoid :: Floating a => a -> a
 sigmoid z = 1.0 / (1 + exp (negate z))
 
-newNetwork :: [Int] -> State StdGen Network
+newNetwork :: Monad m => [Int] -> StateT StdGen m Network
 newNetwork sizes = do
     let matrixSizes = zip (init sizes) (tail sizes)
 

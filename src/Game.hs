@@ -1,4 +1,7 @@
-module Game ( gameLoop ) where
+module Game
+    ( carParams
+    , gameLoop
+    , gameLoop' ) where
 
 import qualified Car        as C
 import           Data.IORef
@@ -49,11 +52,11 @@ fontPath = "fonts/VCR_OSD_MONO.ttf"
 gameTime :: Double
 gameTime = 60
 
-gameLoop :: (World -> IO ()) -> IO [Input] -> Either (IORef Word32) Word32 ->
-    World -> IO World
+gameLoop :: (World -> IO ()) -> (World -> IO [Input]) ->
+    Either (IORef Word32) Word32 -> World -> IO World
 gameLoop drawFunc inputFunc time w = do
     drawFunc w
-    input <- inputFunc
+    input <- inputFunc w
     deltaTime <- case time of
                    Left gameTicks -> do
                        oldTick <- readIORef gameTicks
@@ -61,8 +64,12 @@ gameLoop drawFunc inputFunc time w = do
                        return $ fromIntegral (nowTick - oldTick) / 1000
                    Right delayTicks -> do
                        delay delayTicks
-                       return $ fromIntegral delayTicks * 1000
+                       return $ fromIntegral delayTicks / 1000
     return $ worldTick input deltaTime w
+
+gameLoop' :: (World -> [Input]) -> Word32 -> World -> World
+gameLoop' inputFunc' delayTicks w =
+    worldTick input deltaTime w
 
 getUserInput :: IO [Input]
 getUserInput = do
