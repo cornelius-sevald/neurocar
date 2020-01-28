@@ -37,6 +37,7 @@ dependencies:
 - sdl2 >= 2.5.0.0
 - sdl2-ttf >= 2.1.0
 - lens >= 4.0
+- directory >= 1.3.3.0
 
 library:
   source-dirs: src
