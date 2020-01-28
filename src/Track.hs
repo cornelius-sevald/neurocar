@@ -25,6 +25,7 @@ import qualified Geometry.Intersection as GI
 import           Linear.V2
 import           Linear.V4             (V4)
 import           Linear.Vector
+import qualified SDL.Vect              as SDLV
 import           System.IO
 import           Util
 
@@ -40,12 +41,14 @@ data Track a = Track { _rings           :: Rings a
 
 makeLenses ''Track
 
+trackColor = SDLV.V4 0 255 0 255
+
 getCheckpoint :: Track a -> (V2 a, V2 a)
 getCheckpoint track = cycle (view rings track) !! view checkpointIndex track
 
 -- Parse a track from a file.
-fromFile :: V4 Word8 -> FilePath -> IO (Track Double)
-fromFile color filepath = do
+fromFile :: FilePath -> IO (Track Double)
+fromFile filepath = do
     (trackHeader:trackData) <- lines <$> readFile filepath
     let [carX, carY, carRot] = (read :: String -> Double) <$> splitOn "," trackHeader
     let trackRings = foldr (\line acc -> case (read :: String -> Double) <$> splitOn "," line
@@ -58,7 +61,7 @@ fromFile color filepath = do
                    , _checkpointIndex = 0
                    , _carStartPos = V2 carX carY
                    , _carStartRot = carRot
-                   , _color = color }
+                   , _color = trackColor }
 
 carIntersects :: Track Double -> C.Car -> Bool
 carIntersects track car =
