@@ -75,9 +75,8 @@ generateCar = do
     time        <- prompt    "Training time: "     :: IO Double
     trackName   <- promptStr "Track name: "        :: IO String
     track       <- T.fromFile $ tracksPath ++ trackName ++ ".nct"
-    evolutions  <- NC.evolveCar seed genCount popSize mutChance mutStrength time deltaTicks carParams track
+    let evolutions = NC.evolveCar seed genCount popSize mutChance mutStrength time deltaTicks carParams track
     let baw = GA.bestAverageWorst evolutions
-    putStrLn "ruth"
     forM_ (zip ([0..] :: [Int]) baw) $ \(n, (b, a, w)) -> do
         let minFit = GA.individualFitness w
         let avgFit = a

@@ -68,8 +68,9 @@ gameLoop drawFunc inputFunc time w = do
     return $ worldTick input deltaTime w
 
 gameLoop' :: (World -> [Input]) -> Word32 -> World -> World
-gameLoop' inputFunc' delayTicks w =
-    worldTick input deltaTime w
+gameLoop' inputFunc delayTicks w = worldTick input deltaTime w
+    where input = inputFunc w
+          deltaTime = fromIntegral delayTicks / 1000
 
 getUserInput :: IO [Input]
 getUserInput = do

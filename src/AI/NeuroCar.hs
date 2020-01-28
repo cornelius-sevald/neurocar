@@ -8,6 +8,7 @@ import           Control.Lens
 import           Control.Monad.Loops
 import           Control.Monad.State
 import           Data.Foldable
+import           Data.Functor.Identity
 import           Data.Word             (Word32)
 import           Game
 import qualified Geometry              as G
@@ -23,19 +24,17 @@ rayCount :: Int
 rayCount = 7
 
 evolveCar :: Int -> Int -> Int -> Double -> Double -> Double -> Word32 ->
-    C.CarParams -> T.Track Double -> IO [Population Double]
+    C.CarParams -> T.Track Double -> [Population Double]
 evolveCar seed generations popSize mutChance mutStrength time deltaTicks carParams track = do
     let gen = mkStdGen seed
     let world = initWorld carParams track time
-    let evolveLoop nn = gameLoop' (getNetworkInput nn) deltaTicks
-    let runGame nn = iterateUntilM (\w -> w^.gameState /= GameRunning) (evolveLoop nn) world
-    let fitfunc nn = do {
-          finalWorld <- runGame nn
-        ; return $ fromIntegral $ view score finalWorld }
+    let evolveLoop nn = Identity . gameLoop' (getNetworkInput nn) deltaTicks
+    let runGame nn = runIdentity $ iterateUntilM (\w -> w^.gameState /= GameRunning) (evolveLoop nn) world
+    let fitfunc nn = fromIntegral $ view score (runGame nn)
     let mutfunc = GA.mutate mutChance mutStrength
     let indGen = NN.newNetwork [3+rayCount, 15, 15, 2]
-    let evoFunc = evolvesM generations popSize indGen fitfunc mutfunc
-    evalStateT evoFunc gen
+    let evoFunc = evolves generations popSize indGen fitfunc mutfunc
+    evalState evoFunc gen
 
 
 getNetworkInput :: NN.Network -> World -> [Input]
