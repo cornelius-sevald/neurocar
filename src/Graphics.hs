@@ -1,4 +1,9 @@
-module Graphics ( drawWorld ) where
+module Graphics
+    ( drawWorld
+    , white
+    , red
+    , green
+    , blue ) where
 
 import qualified Car                   as C
 import           Control.Lens
@@ -8,6 +13,7 @@ import           Data.Text             (pack)
 import           Data.Tuple.Extra      as TE
 import qualified Data.Tuple.Sequence   as TS
 import qualified Data.Vector.Storable  as V
+import           Data.Word             (Word8)
 import           Geometry
 import qualified Geometry.Intersection as GI
 import           SDL                   hiding (rotate)
@@ -18,7 +24,10 @@ import qualified Transform             as F
 import           Util
 import           World
 
-white = V4 255 255 255 255
+white = V4 255 255 255 255 :: V4 Word8
+red   = V4 255 000 000 255 :: V4 Word8
+green = V4 000 255 000 255 :: V4 Word8
+blue  = V4 000 000 255 255 :: V4 Word8
 
 drawWorld :: Renderer -> TTF.Font -> World -> IO ()
 drawWorld ren font world = do

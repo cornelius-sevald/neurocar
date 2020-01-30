@@ -7,12 +7,18 @@ import           Control.Error
 import           Control.Monad
 import           Control.Monad.Extra
 import           Control.Monad.IO.Class
+import           Control.Monad.State
 import           Control.Monad.Trans.Except
 import           Data.Function
 import           Data.List
 import           Data.Maybe
+import qualified Data.Text                  as Text
 import           Data.Word                  (Word32)
 import           Game
+import qualified Graphics
+import qualified SDL
+import qualified SDL.Font                   as TTF
+import           SDL.Vect
 import           System.Console.GetOpt
 import           System.Directory
 import           System.Environment
@@ -22,6 +28,7 @@ import           System.Random
 import           Text.Printf
 import qualified Text.Read                  as R
 import qualified Track                      as T
+import qualified UI
 import           Util
 
 data Flags
@@ -33,6 +40,30 @@ data Flags
 tracksPath = "tracks/"
 
 carsPath = "cars/"
+
+fontSize :: TTF.PointSize
+fontSize = 28
+
+fontPath :: FilePath
+fontPath = "fonts/VCR_OSD_MONO.ttf"
+
+windowsConfig :: SDL.WindowConfig
+windowsConfig = SDL.WindowConfig
+    { SDL.windowBorder          = True
+    , SDL.windowHighDPI         = False
+    , SDL.windowInputGrabbed    = False
+    , SDL.windowMode            = SDL.Windowed
+    , SDL.windowGraphicsContext = SDL.NoGraphicsContext
+    , SDL.windowPosition        = SDL.Wherever
+    , SDL.windowResizable       = True
+    , SDL.windowInitialSize     = V2 800 450
+    , SDL.windowVisible         = True }
+
+rendererConfig :: SDL.RendererConfig
+rendererConfig = SDL.RendererConfig
+    { SDL.rendererType          = SDL.AcceleratedVSyncRenderer
+    , SDL.rendererTargetTexture = False }
+
 
 flags =
     [ Option ['g'] ["gen"] (NoArg Generate)
@@ -82,6 +113,21 @@ boundedPrompt str defaultVal bound = do
                show (snd bound) ++ "]"
        else return readValue
 
+setupUI :: IO UI.UI
+setupUI = do
+    font <- TTF.load fontPath fontSize
+    let playButton =
+            UI.Button { UI._buttonSize     = V2 0.2 0.1
+                      , UI._buttonPos      = P $ V2 0.5 0.8
+                      , UI._buttonColors   = repeat Graphics.green
+                      , UI._buttonTextSize = V2 0.3 0.2
+                      , UI._buttonText     = Text.pack "PLAY!"
+                      , UI._buttonFont     = font
+                      , UI._buttonState    = UI.ButtonPressable
+                      , UI._buttonAction   = state return}
+    return $ UI.UI [playButton] [] []
+
+
 main :: IO ()
 main = do
     progName <- getProgName
@@ -92,7 +138,17 @@ main = do
     exitSuccess
 
 playGame :: IO ()
-playGame = putStrLn "video gaming"
+playGame = do
+    SDL.initializeAll
+    TTF.initialize
+
+    window   <- SDL.createWindow (Text.pack "neuro  car") windowsConfig
+    renderer <- SDL.createRenderer window (-1) rendererConfig
+    ui       <- setupUI
+    UI.uiLoop renderer ui
+
+    TTF.quit
+    SDL.quit
 
 generateCar :: IO ()
 generateCar = exceptT putStrLn

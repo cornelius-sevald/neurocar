@@ -8,28 +8,9 @@ import           Data.IORef
 import           Data.Maybe
 import           Data.Word  (Word32)
 import           SDL
-import qualified SDL.Font   as TTF
 import           SDL.Time
 import           SDL.Vect   (V2, V4)
 import           World
-
-windowsConfig :: WindowConfig
-windowsConfig = WindowConfig
-    { windowBorder          = True
-    , windowHighDPI         = False
-    , windowInputGrabbed    = False
-    , windowMode            = Windowed
-    , windowGraphicsContext = NoGraphicsContext
-    , windowPosition        = Wherever
-    , windowResizable       = True
-    , windowInitialSize     = V2 800 450
-    , windowVisible         = True }
-
-rendererConfig :: RendererConfig
-rendererConfig = RendererConfig
-    { rendererType          = AcceleratedVSyncRenderer
-    , rendererTargetTexture = False }
-
 
 carParams :: C.CarParams
 carParams = C.CarParams
@@ -41,12 +22,6 @@ carParams = C.CarParams
     , C._friction       = 0.6
     , C._turnFriction   = 0.6
     , C._color          = V4 100 100 255 255 }
-
-fontSize :: TTF.PointSize
-fontSize = 28
-
-fontPath :: FilePath
-fontPath = "fonts/VCR_OSD_MONO.ttf"
 
 -- The time the player gets to play
 gameTime :: Double
