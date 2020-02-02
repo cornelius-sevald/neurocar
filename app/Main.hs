@@ -18,6 +18,7 @@ import qualified Data.Text                  as Text
 import           Data.Word                  (Word32)
 import           Game
 import qualified Graphics
+import qualified Graphics.UI                as UI
 import qualified SDL
 import qualified SDL.Font                   as TTF
 import           SDL.Vect
@@ -30,7 +31,6 @@ import           System.Random
 import           Text.Printf
 import qualified Text.Read                  as R
 import qualified Track                      as T
-import qualified UI
 import           Util
 
 data Flags

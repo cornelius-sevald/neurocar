@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module UI
+module Graphics.UI
     ( ButtonState(..)
     , TextFieldState(..)
     , Button(..)
