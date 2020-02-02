@@ -4,6 +4,7 @@ module Main where
 import qualified AI.GeneticAlgorithm        as GA
 import qualified AI.NeuralNetwork           as NN
 import qualified AI.NeuroCar                as NC
+import           Control.Concurrent.MVar
 import           Control.Error
 import           Control.Lens
 import           Control.Monad
@@ -118,7 +119,55 @@ boundedPrompt str defaultVal bound = do
 setupUI :: IO UI.UI
 setupUI = do
     font <- TTF.load fontPath fontSize
-    let playButton =
+    trackField <- newMVar
+            UI.TextField { UI._fieldSize     = V2 0.6 0.1
+                         , UI._fieldPos      = P $ V2 0.44 0.4
+                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                               , (V4 100 100 100 255, Graphics.black)
+                                               , (Graphics.black,     Graphics.green)
+                                               , (Graphics.black,     V4 000 200 000 255)
+                                               ]
+                         , UI._fieldTextSize = V2 0.8 0.1
+                         , UI._fieldText     = ""
+                         , UI._fieldFont     = font
+                         , UI._fieldState    = UI.FieldTypable }
+    carField <- newMVar
+            UI.TextField { UI._fieldSize     = V2 0.6 0.1
+                         , UI._fieldPos      = P $ V2 0.44 0.6
+                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                               , (V4 100 100 100 255, Graphics.black)
+                                               , (Graphics.black,     Graphics.green)
+                                               , (Graphics.black,     V4 000 200 000 255)
+                                               ]
+                         , UI._fieldTextSize = V2 0.8 0.1
+                         , UI._fieldText     = ""
+                         , UI._fieldFont     = font
+                         , UI._fieldState    = UI.FieldUnTypable }
+    timeField <- newMVar
+            UI.TextField { UI._fieldSize     = V2 0.1 0.1
+                         , UI._fieldPos      = P $ V2 0.81 0.4
+                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                               , (V4 100 100 100 255, Graphics.black)
+                                               , (Graphics.black,     Graphics.green)
+                                               , (Graphics.black,     V4 000 200 000 255)
+                                               ]
+                         , UI._fieldTextSize = V2 0.15 0.1
+                         , UI._fieldText     = "60"
+                         , UI._fieldFont     = font
+                         , UI._fieldState    = UI.FieldTypable }
+    fpsField <- newMVar
+            UI.TextField { UI._fieldSize     = V2 0.1 0.1
+                         , UI._fieldPos      = P $ V2 0.81 0.6
+                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                               , (V4 100 100 100 255, Graphics.black)
+                                               , (Graphics.black,     Graphics.green)
+                                               , (Graphics.black,     V4 000 200 000 255)
+                                               ]
+                         , UI._fieldTextSize = V2 0.15 0.1
+                         , UI._fieldText     = "24"
+                         , UI._fieldFont     = font
+                         , UI._fieldState    = UI.FieldUnTypable }
+    playButton <- newMVar
             UI.Button { UI._buttonSize     = V2 0.2 0.1
                       , UI._buttonPos      = P $ V2 0.5 0.8
                       , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
@@ -131,7 +180,7 @@ setupUI = do
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
                       , UI._buttonAction   = state return}
-    let carButton =
+    carButton <- newMVar
             UI.Button { UI._buttonSize     = V2 0.05625 0.1
                       , UI._buttonPos      = P $ V2 0.1 0.6
                       , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
@@ -144,9 +193,14 @@ setupUI = do
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
                       , UI._buttonAction   = do { text <- use UI.buttonText
-                                                ; if text == "X" then UI.buttonText .= ""
-                                                     else UI.buttonText .= "X" } }
-    let fpsButton =
+                                                ; if text == "X"
+                                                     then do
+                                                         UI.buttonText .= ""
+                                                         lift $ modifyMVar carField (\f -> return (UI.modifyFieldState f UI.FieldUnTypable, ()))
+                                                     else do
+                                                         UI.buttonText .= "X"
+                                                         lift $ modifyMVar carField (\f -> return (UI.modifyFieldState f UI.FieldTypable, ())) } }
+    fpsButton <- newMVar
             UI.Button { UI._buttonSize     = V2 0.05625 0.1
                       , UI._buttonPos      = P $ V2 0.9 0.6
                       , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
@@ -159,84 +213,52 @@ setupUI = do
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
                       , UI._buttonAction   = do { text <- use UI.buttonText
-                                                ; if text == "X" then UI.buttonText .= ""
-                                                     else UI.buttonText .= "X" } }
-    let trackField =
-            UI.TextField { UI._fieldSize     = V2 0.6 0.1
-                         , UI._fieldPos      = P $ V2 0.44 0.4
-                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
-                                               , (V4 100 100 100 255, Graphics.black)
-                                               , (Graphics.black,     Graphics.green)
-                                               , (Graphics.black,     V4 000 200 000 255)
-                                               ]
-                         , UI._fieldTextSize = V2 0.8 0.1
-                         , UI._fieldText     = ""
-                         , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldTypable }
-    let carField =
-            UI.TextField { UI._fieldSize     = V2 0.6 0.1
-                         , UI._fieldPos      = P $ V2 0.44 0.6
-                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
-                                               , (V4 100 100 100 255, Graphics.black)
-                                               , (Graphics.black,     Graphics.green)
-                                               , (Graphics.black,     V4 000 200 000 255)
-                                               ]
-                         , UI._fieldTextSize = V2 0.8 0.1
-                         , UI._fieldText     = ""
-                         , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldTypable }
-    let timeField =
-            UI.TextField { UI._fieldSize     = V2 0.1 0.1
-                         , UI._fieldPos      = P $ V2 0.81 0.4
-                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
-                                               , (V4 100 100 100 255, Graphics.black)
-                                               , (Graphics.black,     Graphics.green)
-                                               , (Graphics.black,     V4 000 200 000 255)
-                                               ]
-                         , UI._fieldTextSize = V2 0.15 0.1
-                         , UI._fieldText     = "60"
-                         , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldTypable }
-    let fpsField =
-            UI.TextField { UI._fieldSize     = V2 0.1 0.1
-                         , UI._fieldPos      = P $ V2 0.81 0.6
-                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
-                                               , (V4 100 100 100 255, Graphics.black)
-                                               , (Graphics.black,     Graphics.green)
-                                               , (Graphics.black,     V4 000 200 000 255)
-                                               ]
-                         , UI._fieldTextSize = V2 0.15 0.1
-                         , UI._fieldText     = "24"
-                         , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldTypable }
-    let trackLabel =
+                                                ; if text == "X"
+                                                     then do
+                                                         UI.buttonText .= ""
+                                                         lift $ modifyMVar fpsField (\f -> return (UI.modifyFieldState f UI.FieldUnTypable, ()))
+                                                     else do
+                                                         UI.buttonText .= "X"
+                                                         lift $ modifyMVar fpsField (\f -> return (UI.modifyFieldState f UI.FieldTypable, ())) } }
+    trackLabel <- newMVar
             UI.Label { UI._labelSize  = V2 0.3 0.1
                      , UI._labelPos   = P $ V2 0.44 0.31
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = "Track name"
                      , UI._labelFont  = font }
-    let carLabel =
+    carLabel <- newMVar
             UI.Label { UI._labelSize  = V2 0.3 0.1
                      , UI._labelPos   = P $ V2 0.44 0.51
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = Text.pack "Car name"
                      , UI._labelFont  = font }
-    let timeLabel =
+    timeLabel <- newMVar
             UI.Label { UI._labelSize  = V2 0.15 0.1
                      , UI._labelPos   = P $ V2 0.81 0.31
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = Text.pack "Time"
                      , UI._labelFont  = font }
-    let fpsLabel =
+    fpsLabel <- newMVar
             UI.Label { UI._labelSize  = V2 0.1 0.1
                      , UI._labelPos   = P $ V2 0.81 0.51
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = Text.pack "FPS"
                      , UI._labelFont  = font }
 
-    return $ UI.UI [playButton, carButton, fpsButton]
-                   [trackField, carField, timeField, fpsField]
-                   [trackLabel, carLabel, timeLabel, fpsLabel]
+    return $ UI.UI ([ playButton
+                    , carButton
+                    , fpsButton
+                    ])
+                   ([ trackField
+                    , carField
+                    , timeField
+                    , fpsField
+                    ])
+                   ([ trackLabel
+                    , carLabel
+                    , timeLabel
+                    , fpsLabel
+                    ])
 
 
 main :: IO ()

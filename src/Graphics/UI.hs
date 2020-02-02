@@ -28,10 +28,14 @@ module Graphics.UI
     , labelText
     , labelFont
     , labelColor
+    -- Helper
+    , modifyButtonState
+    , modifyFieldState
     -- Logic
     , uiLoop
     ) where
 
+import           Control.Concurrent.MVar
 import           Control.Error.Util
 import           Control.Lens
 import           Control.Monad.State
@@ -104,7 +108,9 @@ data Label
             , _labelFont  :: TTF.Font
             , _labelColor :: V4 Word8 }
 
-data UI = UI [Button] [TextField] [Label]
+data UI = UI [MVar Button   ]
+             [MVar TextField]
+             [MVar Label    ]
 
 -- Instances
 
@@ -148,6 +154,12 @@ makeLenses ''TextField
 makeLenses ''Label
 
 -- Functions
+
+modifyButtonState :: Button -> ButtonState -> Button
+modifyButtonState button newState = flip execState button $ buttonState .= newState
+
+modifyFieldState :: TextField -> TextFieldState -> TextField
+modifyFieldState field newState = flip execState field $ fieldState .= newState
 
 toScreenScale :: RealFrac a => V2 CInt -> V2 a -> V2 CInt
 toScreenScale (V2 w h) (V2 x y) = V2 (round $ x * fromIntegral w)
@@ -226,65 +238,67 @@ drawButton wp ren button = do
 drawLabel :: V2 CInt -> Renderer -> Label -> IO ()
 drawLabel = drawUIText
 
-updateButton :: V2 CInt -> [Event] -> Button -> IO Button
-updateButton wp events button = flip execStateT button $ do
-    mouseOverButton <- lift $ mouseOverUIElem wp button
-    let state       = button^.buttonState
+updateButton :: V2 CInt -> [Event] -> MVar Button -> IO ()
+updateButton wp events mButton = do
+    button    <- takeMVar mButton
+    newButton <- flip execStateT button $ do
+        mouseOverButton <- lift $ mouseOverUIElem wp button
+        let state       = button^.buttonState
 
-    let m1IsPressed  = any (eventIsM1Motion Pressed)  events
-        m1IsReleased = any (eventIsM1Motion Released) events
+        let m1IsPressed  = any (eventIsM1Motion Pressed)  events
+            m1IsReleased = any (eventIsM1Motion Released) events
 
-    when (state == ButtonPressable &&
-          mouseOverButton) $ buttonState .= ButtonHovered
-    when (state == ButtonHovered &&
-          not mouseOverButton) $ buttonState .= ButtonPressable
-    when (state == ButtonHovered &&
-          m1IsPressed) $ buttonState .= ButtonPressed
-    when (state == ButtonPressed &&
-          m1IsReleased) $ buttonState .= ButtonPressable >>
-                          when mouseOverButton (button^.buttonAction)
+        when (state == ButtonPressable &&
+              mouseOverButton) $ buttonState .= ButtonHovered
+        when (state == ButtonHovered &&
+              not mouseOverButton) $ buttonState .= ButtonPressable
+        when (state == ButtonHovered &&
+              m1IsPressed) $ buttonState .= ButtonPressed
+        when (state == ButtonPressed &&
+              m1IsReleased) $ buttonState .= ButtonPressable >>
+                              when mouseOverButton (button^.buttonAction)
+    putMVar mButton newButton
 
-updateField :: V2 CInt -> [Event] -> TextField -> IO TextField
-updateField wp events field = flip execStateT field $ do
-    mouseOverButton <- lift $ mouseOverUIElem wp field
-    let state           = field^.fieldState
+updateField :: V2 CInt -> [Event] -> MVar TextField -> IO ()
+updateField wp events mField = do
+    field    <- takeMVar mField
+    newField <- flip execStateT field $ do
+        mouseOverButton <- lift $ mouseOverUIElem wp field
+        let state           = field^.fieldState
 
-    let m1IsPressed  = any (eventIsM1Motion Pressed)  events
+        let m1IsPressed  = any (eventIsM1Motion Pressed)  events
 
-    when (state == FieldTypable &&
-          mouseOverButton) $ fieldState .= FieldHovered
-    when (state == FieldHovered &&
-          not mouseOverButton) $ fieldState .= FieldTypable
-    when (state == FieldHovered &&
-          m1IsPressed) $ fieldState .= FieldTyping >>
-                         fieldText  .= ""          >>
-                         let rect = (\(Rectangle (P (V2 x y)) (V2 w h)) ->
-                                    Rect x y w h) (screenRectFromUIElem wp field)
-                          in startTextInput rect
-    when (state == FieldTyping &&
-          m1IsPressed) $ fieldState .= FieldTypable >>
-                         stopTextInput
+        when (state == FieldTypable &&
+              mouseOverButton) $ fieldState .= FieldHovered
+        when (state == FieldHovered &&
+              not mouseOverButton) $ fieldState .= FieldTypable
+        when (state == FieldHovered &&
+              m1IsPressed) $ fieldState .= FieldTyping >>
+                             let rect = (\(Rectangle (P (V2 x y)) (V2 w h)) ->
+                                        Rect x y w h) (screenRectFromUIElem wp field)
+                              in startTextInput rect
+        when (state == FieldTyping &&
+              m1IsPressed) $ fieldState .= FieldTypable >>
+                             stopTextInput
 
-    when (state == FieldTyping) $ forM_ events $ \event -> do
-        contents <- gets _fieldText
-        case eventPayload event of
-          TextInputEvent inputEvent   -> fieldText %= flip Text.append (textInputEventText inputEvent)
-          KeyboardEvent keyboardEvent ->
-              when (keyboardEventKeyMotion keyboardEvent == Pressed) $
-                    case keysymKeycode (keyboardEventKeysym keyboardEvent) of
-                      KeycodeBackspace -> unless (Text.null contents) $ fieldText %= Text.init
-                      KeycodeDelete    -> fieldText .= ""
-                      KeycodeEscape    -> fieldState .= FieldTypable
-                      _                -> return ()
-          _                           -> return ()
+        when (state == FieldTyping) $ forM_ events $ \event -> do
+            contents <- gets _fieldText
+            case eventPayload event of
+              TextInputEvent inputEvent   -> fieldText %= flip Text.append (textInputEventText inputEvent)
+              KeyboardEvent keyboardEvent ->
+                  when (keyboardEventKeyMotion keyboardEvent == Pressed) $
+                        case keysymKeycode (keyboardEventKeysym keyboardEvent) of
+                          KeycodeBackspace -> unless (Text.null contents) $ fieldText %= Text.init
+                          KeycodeDelete    -> fieldText .= ""
+                          KeycodeEscape    -> fieldState .= FieldTypable
+                          _                -> return ()
+              _                           -> return ()
+    putMVar mField newField
 
-
-updateUI :: V2 CInt -> [Event] -> UI -> IO UI
+updateUI :: V2 CInt -> [Event] -> UI -> IO ()
 updateUI wp events (UI buttons fields labels) = do
-    newButtons <- mapM (updateButton wp events) buttons
-    newFields  <- mapM (updateField wp events)  fields
-    let newLabels = labels
-    return $ UI newButtons newFields newLabels
+    mapM_ (updateButton wp events) buttons
+    mapM_ (updateField wp events)  fields
 
 drawUI :: V2 CInt -> Renderer -> UI -> IO ()
 drawUI wp ren (UI buttons fields labels) = do
@@ -292,9 +306,9 @@ drawUI wp ren (UI buttons fields labels) = do
     rendererDrawColor ren $= V4 0 0 0 255
 
     clear ren
-    mapM_ (drawButton wp ren) buttons
-    mapM_ (drawTextField wp ren) fields
-    mapM_ (drawLabel wp ren)  labels
+    mapM_ (readMVar >=> drawButton wp ren)    buttons
+    mapM_ (readMVar >=> drawTextField wp ren) fields
+    mapM_ (readMVar >=> drawLabel wp ren)     labels
 
     present ren
 
@@ -310,6 +324,6 @@ uiLoop ren ui = do
     viewport'    <- SDL.get $ rendererViewport ren
     let viewport = (\(Just (Rectangle _ v)) -> v) viewport'
 
-    newUI <- updateUI viewport events ui
-    drawUI viewport ren newUI
-    unless qPressed (uiLoop ren newUI)
+    updateUI viewport events ui
+    drawUI viewport ren ui
+    unless qPressed (uiLoop ren ui)
