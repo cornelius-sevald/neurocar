@@ -23,6 +23,7 @@ dependencies:
 - random >= 1.1
 - extra >= 1.6.18
 - tuple >= 0.3.0.2
+- containers >= 0.6.0.1
 - text >= 1.2.3.1
 - split >= 0.2.3.3
 - linear >= 1.20

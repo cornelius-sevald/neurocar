@@ -14,6 +14,7 @@ import           Control.Monad.State
 import           Control.Monad.Trans.Except
 import           Data.Function
 import           Data.List
+import qualified Data.Map                   as Map
 import           Data.Maybe
 import qualified Data.Text                  as Text
 import           Data.Word                  (Word32)
@@ -245,20 +246,20 @@ setupUI = do
                      , UI._labelText  = Text.pack "FPS"
                      , UI._labelFont  = font }
 
-    return $ UI.UI ([ playButton
-                    , carButton
-                    , fpsButton
-                    ])
-                   ([ trackField
-                    , carField
-                    , timeField
-                    , fpsField
-                    ])
-                   ([ trackLabel
-                    , carLabel
-                    , timeLabel
-                    , fpsLabel
-                    ])
+    return $ UI.UI (Map.fromList [ ("play button", playButton)
+                                 , ("car button" , carButton)
+                                 , ("fps button" , fpsButton)
+                                 ])
+                   (Map.fromList [ ("track field", trackField)
+                                 , ("car field"  , carField)
+                                 , ("time field" , timeField)
+                                 , ("fps field"  , fpsField)
+                                 ])
+                   (Map.fromList [ ("track label", trackLabel)
+                                 , ("car label"  , carLabel)
+                                 , ("time label" , timeLabel)
+                                 , ("fps label"  , fpsLabel)
+                                 ])
 
 
 main :: IO ()

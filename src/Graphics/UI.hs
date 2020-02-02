@@ -41,6 +41,7 @@ import           Control.Lens
 import           Control.Monad.State
 import           Control.Monad.Trans.Class
 import           Data.Function             (on)
+import qualified Data.Map                  as Map
 import qualified Data.Text                 as Text
 import qualified Data.Tuple.Extra          as Tuple
 import qualified Data.Vector.Storable      as V
@@ -108,9 +109,9 @@ data Label
             , _labelFont  :: TTF.Font
             , _labelColor :: V4 Word8 }
 
-data UI = UI [MVar Button   ]
-             [MVar TextField]
-             [MVar Label    ]
+data UI = UI (Map.Map String (MVar Button   ))
+             (Map.Map String (MVar TextField))
+             (Map.Map String (MVar Label    ))
 
 -- Instances
 
