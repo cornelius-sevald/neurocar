@@ -292,6 +292,7 @@ updateField wp events mField = do
                           KeycodeBackspace -> unless (Text.null contents) $ fieldText %= Text.init
                           KeycodeDelete    -> fieldText .= ""
                           KeycodeEscape    -> fieldState .= FieldTypable
+                          KeycodeReturn    -> fieldState .= FieldTypable
                           _                -> return ()
               _                           -> return ()
     putMVar mField newField
