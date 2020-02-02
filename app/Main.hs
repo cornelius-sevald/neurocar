@@ -1,9 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import qualified AI.GeneticAlgorithm        as GA
 import qualified AI.NeuralNetwork           as NN
 import qualified AI.NeuroCar                as NC
 import           Control.Error
+import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Extra
 import           Control.Monad.IO.Class
@@ -119,13 +121,122 @@ setupUI = do
     let playButton =
             UI.Button { UI._buttonSize     = V2 0.2 0.1
                       , UI._buttonPos      = P $ V2 0.5 0.8
-                      , UI._buttonColors   = repeat Graphics.green
+                      , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
+                                             , (V4 100 100 100 255, Graphics.black)
+                                             , (Graphics.black,     Graphics.green)
+                                             , (Graphics.black,     V4 000 200 000 255)
+                                             ]
                       , UI._buttonTextSize = V2 0.3 0.2
-                      , UI._buttonText     = Text.pack "PLAY!"
+                      , UI._buttonText     = "PLAY!"
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
                       , UI._buttonAction   = state return}
-    return $ UI.UI [playButton] [] []
+    let carButton =
+            UI.Button { UI._buttonSize     = V2 0.05625 0.1
+                      , UI._buttonPos      = P $ V2 0.1 0.6
+                      , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
+                                             , (V4 100 100 100 255, Graphics.black)
+                                             , (Graphics.black,     Graphics.green)
+                                             , (Graphics.black,     V4 000 200 000 255)
+                                             ]
+                      , UI._buttonTextSize = V2 0.1 0.1
+                      , UI._buttonText     = ""
+                      , UI._buttonFont     = font
+                      , UI._buttonState    = UI.ButtonPressable
+                      , UI._buttonAction   = do { text <- use UI.buttonText
+                                                ; if text == "X" then UI.buttonText .= ""
+                                                     else UI.buttonText .= "X" } }
+    let fpsButton =
+            UI.Button { UI._buttonSize     = V2 0.05625 0.1
+                      , UI._buttonPos      = P $ V2 0.9 0.6
+                      , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
+                                             , (V4 100 100 100 255, Graphics.black)
+                                             , (Graphics.black,     Graphics.green)
+                                             , (Graphics.black,     V4 000 200 000 255)
+                                             ]
+                      , UI._buttonTextSize = V2 0.1 0.1
+                      , UI._buttonText     = ""
+                      , UI._buttonFont     = font
+                      , UI._buttonState    = UI.ButtonPressable
+                      , UI._buttonAction   = do { text <- use UI.buttonText
+                                                ; if text == "X" then UI.buttonText .= ""
+                                                     else UI.buttonText .= "X" } }
+    let trackField =
+            UI.TextField { UI._fieldSize     = V2 0.6 0.1
+                         , UI._fieldPos      = P $ V2 0.44 0.4
+                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                               , (V4 100 100 100 255, Graphics.black)
+                                               , (Graphics.black,     Graphics.green)
+                                               , (Graphics.black,     V4 000 200 000 255)
+                                               ]
+                         , UI._fieldTextSize = V2 0.8 0.1
+                         , UI._fieldText     = ""
+                         , UI._fieldFont     = font
+                         , UI._fieldState    = UI.FieldTypable }
+    let carField =
+            UI.TextField { UI._fieldSize     = V2 0.6 0.1
+                         , UI._fieldPos      = P $ V2 0.44 0.6
+                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                               , (V4 100 100 100 255, Graphics.black)
+                                               , (Graphics.black,     Graphics.green)
+                                               , (Graphics.black,     V4 000 200 000 255)
+                                               ]
+                         , UI._fieldTextSize = V2 0.8 0.1
+                         , UI._fieldText     = ""
+                         , UI._fieldFont     = font
+                         , UI._fieldState    = UI.FieldTypable }
+    let timeField =
+            UI.TextField { UI._fieldSize     = V2 0.1 0.1
+                         , UI._fieldPos      = P $ V2 0.81 0.4
+                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                               , (V4 100 100 100 255, Graphics.black)
+                                               , (Graphics.black,     Graphics.green)
+                                               , (Graphics.black,     V4 000 200 000 255)
+                                               ]
+                         , UI._fieldTextSize = V2 0.15 0.1
+                         , UI._fieldText     = "60"
+                         , UI._fieldFont     = font
+                         , UI._fieldState    = UI.FieldTypable }
+    let fpsField =
+            UI.TextField { UI._fieldSize     = V2 0.1 0.1
+                         , UI._fieldPos      = P $ V2 0.81 0.6
+                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                               , (V4 100 100 100 255, Graphics.black)
+                                               , (Graphics.black,     Graphics.green)
+                                               , (Graphics.black,     V4 000 200 000 255)
+                                               ]
+                         , UI._fieldTextSize = V2 0.15 0.1
+                         , UI._fieldText     = "24"
+                         , UI._fieldFont     = font
+                         , UI._fieldState    = UI.FieldTypable }
+    let trackLabel =
+            UI.Label { UI._labelSize  = V2 0.3 0.1
+                     , UI._labelPos   = P $ V2 0.44 0.31
+                     , UI._labelColor = Graphics.white
+                     , UI._labelText  = "Track name"
+                     , UI._labelFont  = font }
+    let carLabel =
+            UI.Label { UI._labelSize  = V2 0.3 0.1
+                     , UI._labelPos   = P $ V2 0.44 0.51
+                     , UI._labelColor = Graphics.white
+                     , UI._labelText  = Text.pack "Car name"
+                     , UI._labelFont  = font }
+    let timeLabel =
+            UI.Label { UI._labelSize  = V2 0.15 0.1
+                     , UI._labelPos   = P $ V2 0.81 0.31
+                     , UI._labelColor = Graphics.white
+                     , UI._labelText  = Text.pack "Time"
+                     , UI._labelFont  = font }
+    let fpsLabel =
+            UI.Label { UI._labelSize  = V2 0.1 0.1
+                     , UI._labelPos   = P $ V2 0.81 0.51
+                     , UI._labelColor = Graphics.white
+                     , UI._labelText  = Text.pack "FPS"
+                     , UI._labelFont  = font }
+
+    return $ UI.UI [playButton, carButton, fpsButton]
+                   [trackField, carField, timeField, fpsField]
+                   [trackLabel, carLabel, timeLabel, fpsLabel]
 
 
 main :: IO ()

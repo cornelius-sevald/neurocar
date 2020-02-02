@@ -3,9 +3,11 @@ module Geometry
     , Ray
     , rotate
     , segSqLength
-    , segLength ) where
+    , segLength
+    , pointInRect ) where
 
 import           Linear.V2
+import           SDL       (Point (..), Rectangle (..))
 
 type Segment a = (V2 a, V2 a)
 type Ray a = (V2 a, V2 a)
@@ -20,3 +22,13 @@ segSqLength (V2 x0 y0, V2 x1 y1) = (x1-x0)^2 + (y1-y0)^2
 
 segLength :: Floating a => Segment a -> a
 segLength = sqrt . segSqLength
+
+pointInRect :: (Ord a, Fractional a) =>
+    Rectangle a -> Point V2 a -> Bool
+pointInRect (Rectangle (P (V2 cx cy)) (V2 w h)) (P (V2 x y))
+  = let cx' = x - cx
+        cy' = y - cy
+     in 0   <= cx' &&
+        cx' <= w   &&
+        0   <= cy' &&
+        cy' <= h

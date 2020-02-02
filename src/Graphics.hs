@@ -1,6 +1,7 @@
 module Graphics
     ( drawWorld
     , white
+    , black
     , red
     , green
     , blue ) where
@@ -25,6 +26,7 @@ import           Util
 import           World
 
 white = V4 255 255 255 255 :: V4 Word8
+black = V4 000 000 000 255 :: V4 Word8
 red   = V4 255 000 000 255 :: V4 Word8
 green = V4 000 255 000 255 :: V4 Word8
 blue  = V4 000 000 255 255 :: V4 Word8
