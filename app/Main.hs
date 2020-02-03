@@ -78,6 +78,64 @@ flags =
             "Print this help message and exit the program."
     ]
 
+
+main :: IO ()
+main = do
+    progName <- getProgName
+    as <- getArgs >>= parse progName
+    when (Play `elem` as) (playGame >> exitSuccess)
+    when (Generate `elem` as) (generateCar >> exitSuccess)
+    playGame
+    exitSuccess
+
+playGame :: IO ()
+playGame = do
+    SDL.initializeAll
+    TTF.initialize
+
+    window   <- SDL.createWindow (Text.pack "neuro  car") windowsConfig
+    renderer <- SDL.createRenderer window (-1) rendererConfig
+    ui       <- setupUI
+    UI.uiLoop renderer ui
+
+    TTF.quit
+    SDL.quit
+
+generateCar :: IO ()
+generateCar = exceptT putStrLn
+    return $ do
+        randSeed    <- flip mod 1000 <$> liftIO (randomIO :: IO Int)
+        seed        <- prompt "Seed" (Just randSeed)                                  :: ExceptT String IO Int
+        genCount    <- boundedPrompt "Generations" (Just 20) (1, 10000)               :: ExceptT String IO Int
+        popSize     <- boundedPrompt "Population size" (Just 20) (1, 10000)           :: ExceptT String IO Int
+        mutChance   <- boundedPrompt "Mutation chance" (Just 0.1) (0, 1)              :: ExceptT String IO Double
+        mutStrength <- boundedPrompt "Mutation strength" (Just 1) (0, 100)            :: ExceptT String IO Double
+        time        <- boundedPrompt "Training time" (Just 60) (0, 3600)              :: ExceptT String IO Double
+        deltaTicks  <- boundedPrompt "Delta ticks" (Just 40) (1, round $ time * 1000) :: ExceptT String IO Word32
+        trackName   <- prompt "Track name" Nothing                                    :: ExceptT String IO String
+        let trackPath = trackNameToPath trackName
+        unlessM (liftIO $ doesFileExist trackPath) $ throwE "Invalid track name"
+        track       <- liftIO $ T.fromFile trackPath
+        let evolutions = NC.evolveCar seed genCount popSize mutChance mutStrength time deltaTicks carParams track
+        let baw = GA.bestAverageWorst evolutions
+        forM_ (zip ([0..] :: [Int]) baw) $ \(n, (b, a, w)) -> do
+            let minFit = GA.individualFitness w
+            let avgFit = a
+            let maxFit = GA.individualFitness b
+            liftIO $ printf "%d \t %.2f \t %.2f \t %.2f\n" n minFit avgFit maxFit
+        let bestIndividual = fst3 $ maximumBy (compare `on` GA.individualFitness . fst3) baw
+        let carName = "car-" ++ show seed
+        liftIO $ createDirectoryIfMissing True carsPath
+        liftIO $ NN.toFile (carNameToPath carName) (GA.individualGenome bestIndividual)
+
+
+trackNameToPath :: String -> String
+trackNameToPath name = tracksPath ++ name ++ ".nct"
+
+carNameToPath :: String -> String
+carNameToPath name = carsPath ++ name ++ ".nn"
+
+parse :: String -> [String] -> IO [Flags]
 parse progName argv = case getOpt Permute flags argv of
                (args,fs,[]) ->
                    if Help `elem` args
@@ -260,53 +318,3 @@ setupUI = do
                                  , ("time label" , timeLabel)
                                  , ("fps label"  , fpsLabel)
                                  ])
-
-
-main :: IO ()
-main = do
-    progName <- getProgName
-    as <- getArgs >>= parse progName
-    when (Play `elem` as) (playGame >> exitSuccess)
-    when (Generate `elem` as) (generateCar >> exitSuccess)
-    playGame
-    exitSuccess
-
-playGame :: IO ()
-playGame = do
-    SDL.initializeAll
-    TTF.initialize
-
-    window   <- SDL.createWindow (Text.pack "neuro  car") windowsConfig
-    renderer <- SDL.createRenderer window (-1) rendererConfig
-    ui       <- setupUI
-    UI.uiLoop renderer ui
-
-    TTF.quit
-    SDL.quit
-
-generateCar :: IO ()
-generateCar = exceptT putStrLn
-    return $ do
-        randSeed    <- flip mod 1000 <$> liftIO (randomIO :: IO Int)
-        seed        <- prompt "Seed" (Just randSeed)                                  :: ExceptT String IO Int
-        genCount    <- boundedPrompt "Generations" (Just 20) (1, 10000)               :: ExceptT String IO Int
-        popSize     <- boundedPrompt "Population size" (Just 20) (1, 10000)           :: ExceptT String IO Int
-        mutChance   <- boundedPrompt "Mutation chance" (Just 0.1) (0, 1)              :: ExceptT String IO Double
-        mutStrength <- boundedPrompt "Mutation strength" (Just 1) (0, 100)            :: ExceptT String IO Double
-        time        <- boundedPrompt "Training time" (Just 60) (0, 3600)              :: ExceptT String IO Double
-        deltaTicks  <- boundedPrompt "Delta ticks" (Just 40) (1, round $ time * 1000) :: ExceptT String IO Word32
-        trackName   <- prompt "Track name" Nothing                                    :: ExceptT String IO String
-        let trackPath = tracksPath ++ trackName ++ ".nct"
-        unlessM (liftIO $ doesFileExist trackPath) $ throwE "Invalid track name"
-        track       <- liftIO $ T.fromFile $ tracksPath ++ trackName ++ ".nct"
-        let evolutions = NC.evolveCar seed genCount popSize mutChance mutStrength time deltaTicks carParams track
-        let baw = GA.bestAverageWorst evolutions
-        forM_ (zip ([0..] :: [Int]) baw) $ \(n, (b, a, w)) -> do
-            let minFit = GA.individualFitness w
-            let avgFit = a
-            let maxFit = GA.individualFitness b
-            liftIO $ printf "%d \t %.2f \t %.2f \t %.2f\n" n minFit avgFit maxFit
-        let bestIndividual = fst3 $ maximumBy (compare `on` GA.individualFitness . fst3) baw
-        let carName = "car-" ++ show seed
-        liftIO $ createDirectoryIfMissing True carsPath
-        liftIO $ NN.toFile (carsPath ++ carName ++ ".nn") (GA.individualGenome bestIndividual)
