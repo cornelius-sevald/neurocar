@@ -178,19 +178,32 @@ boundedPrompt str defaultVal bound = do
 setupUI :: IO UI.UI
 setupUI = do
     font <- TTF.load fontPath fontSize
-    trackField <- newMVar
-            UI.TextField { UI._fieldSize     = V2 0.6 0.1
-                         , UI._fieldPos      = P $ V2 0.44 0.4
-                         , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
-                                               , (V4 100 100 100 255, Graphics.black)
-                                               , (Graphics.black,     Graphics.green)
-                                               , (Graphics.black,     V4 000 200 000 255)
-                                               ]
-                         , UI._fieldTextSize = V2 0.8 0.1
-                         , UI._fieldText     = ""
-                         , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldTypable }
-    carField <- newMVar
+    playButton <- newEmptyMVar
+    trackField <- newEmptyMVar
+    carButton  <- newEmptyMVar
+    fpsButton  <- newEmptyMVar
+    trackField <- newEmptyMVar
+    carField   <- newEmptyMVar
+    timeField  <- newEmptyMVar
+    fpsField   <- newEmptyMVar
+    trackLabel <- newEmptyMVar
+    carLabel   <- newEmptyMVar
+    timeLabel  <- newEmptyMVar
+    fpsLabel   <- newEmptyMVar
+
+    putMVar trackField $
+        UI.TextField { UI._fieldSize     = V2 0.6 0.1
+                     , UI._fieldPos      = P $ V2 0.44 0.4
+                     , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
+                                           , (V4 100 100 100 255, Graphics.black)
+                                           , (Graphics.black,     Graphics.green)
+                                           , (Graphics.black,     V4 000 200 000 255)
+                                           ]
+                     , UI._fieldTextSize = V2 0.8 0.1
+                     , UI._fieldText     = ""
+                     , UI._fieldFont     = font
+                     , UI._fieldState    = UI.FieldTypable }
+    putMVar carField $
             UI.TextField { UI._fieldSize     = V2 0.6 0.1
                          , UI._fieldPos      = P $ V2 0.44 0.6
                          , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
@@ -202,7 +215,7 @@ setupUI = do
                          , UI._fieldText     = ""
                          , UI._fieldFont     = font
                          , UI._fieldState    = UI.FieldUnTypable }
-    timeField <- newMVar
+    putMVar timeField $
             UI.TextField { UI._fieldSize     = V2 0.1 0.1
                          , UI._fieldPos      = P $ V2 0.81 0.4
                          , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
@@ -214,7 +227,7 @@ setupUI = do
                          , UI._fieldText     = "60"
                          , UI._fieldFont     = font
                          , UI._fieldState    = UI.FieldTypable }
-    fpsField <- newMVar
+    putMVar fpsField $
             UI.TextField { UI._fieldSize     = V2 0.1 0.1
                          , UI._fieldPos      = P $ V2 0.81 0.6
                          , UI._fieldColors   = [ (Graphics.green,     Graphics.black)
@@ -226,7 +239,7 @@ setupUI = do
                          , UI._fieldText     = "24"
                          , UI._fieldFont     = font
                          , UI._fieldState    = UI.FieldUnTypable }
-    playButton <- newMVar
+    putMVar playButton $
             UI.Button { UI._buttonSize     = V2 0.2 0.1
                       , UI._buttonPos      = P $ V2 0.5 0.8
                       , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
@@ -239,7 +252,7 @@ setupUI = do
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
                       , UI._buttonAction   = state return}
-    carButton <- newMVar
+    putMVar carButton $
             UI.Button { UI._buttonSize     = V2 0.05625 0.1
                       , UI._buttonPos      = P $ V2 0.1 0.6
                       , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
@@ -259,7 +272,7 @@ setupUI = do
                                                      else do
                                                          UI.buttonText .= "X"
                                                          lift $ modifyMVar carField (\f -> return (UI.modifyFieldState f UI.FieldTypable, ())) } }
-    fpsButton <- newMVar
+    putMVar fpsButton $
             UI.Button { UI._buttonSize     = V2 0.05625 0.1
                       , UI._buttonPos      = P $ V2 0.9 0.6
                       , UI._buttonColors   = [ (Graphics.green,     Graphics.black)
@@ -279,25 +292,25 @@ setupUI = do
                                                      else do
                                                          UI.buttonText .= "X"
                                                          lift $ modifyMVar fpsField (\f -> return (UI.modifyFieldState f UI.FieldTypable, ())) } }
-    trackLabel <- newMVar
+    putMVar trackLabel $
             UI.Label { UI._labelSize  = V2 0.3 0.1
                      , UI._labelPos   = P $ V2 0.44 0.31
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = "Track name"
                      , UI._labelFont  = font }
-    carLabel <- newMVar
+    putMVar carLabel $
             UI.Label { UI._labelSize  = V2 0.3 0.1
                      , UI._labelPos   = P $ V2 0.44 0.51
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = Text.pack "Car name"
                      , UI._labelFont  = font }
-    timeLabel <- newMVar
+    putMVar timeLabel $
             UI.Label { UI._labelSize  = V2 0.15 0.1
                      , UI._labelPos   = P $ V2 0.81 0.31
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = Text.pack "Time"
                      , UI._labelFont  = font }
-    fpsLabel <- newMVar
+    putMVar fpsLabel $
             UI.Label { UI._labelSize  = V2 0.1 0.1
                      , UI._labelPos   = P $ V2 0.81 0.51
                      , UI._labelColor = Graphics.white
