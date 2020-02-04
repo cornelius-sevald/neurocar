@@ -85,6 +85,7 @@ data TextFieldState
     | FieldUnTypable
     | FieldHovered
     | FieldTyping
+    | FieldInvalid
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 data Button
@@ -273,7 +274,7 @@ updateField wp events mField = do
 
         let m1IsPressed  = any (eventIsM1Motion Pressed)  events
 
-        when (state == FieldTypable &&
+        when ((state == FieldTypable || state == FieldInvalid) &&
               mouseOverButton) $ fieldState .= FieldHovered
         when (state == FieldHovered &&
               not mouseOverButton) $ fieldState .= FieldTypable
