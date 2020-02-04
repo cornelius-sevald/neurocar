@@ -26,9 +26,12 @@ rayCount = 7
 evolveCar :: Int -> Int -> Int -> Double -> Double -> Double -> Word32 ->
     C.CarParams -> T.Track Double -> [Population Double]
 evolveCar seed generations popSize mutChance mutStrength time deltaTicks carParams track = do
-    let gen = mkStdGen seed
-    let world = initWorld carParams track time
-    let evolveLoop nn = Identity . gameLoop' (getNetworkInput nn) deltaTicks
+    let gen          = mkStdGen seed
+    let drawFunc     = return . const ()
+    let inputFunc nn = Identity . getNetworkInput nn
+    let timeFunc     = return deltaTicks
+    let world        = initWorld carParams track time
+    let evolveLoop nn = gameLoop drawFunc (inputFunc nn) timeFunc
     let runGame nn = runIdentity $ iterateUntilM (\w -> w^.gameState /= GameRunning) (evolveLoop nn) world
     let fitfunc nn = fromIntegral $ view score (runGame nn)
     let mutfunc = GA.mutate mutChance mutStrength

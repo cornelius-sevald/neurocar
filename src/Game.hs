@@ -2,7 +2,6 @@ module Game
     ( carParams
     , getUserInput
     , gameLoop
-    , gameLoop'
     , eventIsButtonPress ) where
 
 import qualified Car           as C
@@ -32,18 +31,13 @@ carParams = C.CarParams
 gameTime :: Double
 gameTime = 60
 
-gameLoop :: (World -> IO ()) -> (World -> IO [Input]) ->
-    IO Word32 -> World -> IO World
+gameLoop :: Monad m => (World -> m ()) -> (World -> m [Input]) ->
+    m Word32 -> World -> m World
 gameLoop drawFunc inputFunc timefunc w = do
     drawFunc w
     input <- inputFunc w
     deltaTime <- (\x -> fromIntegral x / 1000) <$> timefunc
     return $ worldTick input deltaTime w
-
-gameLoop' :: (World -> [Input]) -> Word32 -> World -> World
-gameLoop' inputFunc delayTicks w = worldTick input deltaTime w
-    where input = inputFunc w
-          deltaTime = fromIntegral delayTicks / 1000
 
 getUserInput :: IO [Input]
 getUserInput = do
