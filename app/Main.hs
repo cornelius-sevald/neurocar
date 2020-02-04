@@ -110,6 +110,7 @@ playGame = do
 generateCar :: IO ()
 generateCar = exceptT putStrLn
     return $ do
+        -- Initialization
         randSeed    <- flip mod 1000 <$> liftIO (randomIO :: IO Int)
         seed        <- prompt "Seed" (Just randSeed)                                  :: ExceptT String IO Int
         genCount    <- boundedPrompt "Generations" (Just 20) (1, 10000)               :: ExceptT String IO Int
@@ -122,8 +123,11 @@ generateCar = exceptT putStrLn
         let trackPath = trackNameToPath trackName
         unlessM (liftIO $ doesFileExist trackPath) $ throwE "Invalid track name"
         track       <- liftIO $ T.fromFile trackPath
+        -- Evolution
         let evolutions = NC.evolveCar seed genCount popSize mutChance mutStrength time deltaTicks carParams track
+        -- Statistics
         let baw = GA.bestAverageWorst evolutions
+        liftIO $ printf "GEN \t MIN \t AVG \t MAX\n"
         forM_ (zip ([0..] :: [Int]) baw) $ \(n, (b, a, w)) -> do
             let minFit = GA.individualFitness w
             let avgFit = a
@@ -133,6 +137,7 @@ generateCar = exceptT putStrLn
         let carName = "car-" ++ show seed
         liftIO $ createDirectoryIfMissing True carsPath
         liftIO $ NN.toFile (carNameToPath carName) (GA.individualGenome bestIndividual)
+
 
 
 trackNameToPath :: String -> String
