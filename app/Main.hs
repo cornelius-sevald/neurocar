@@ -16,6 +16,7 @@ import           Control.Monad.Trans.Except
 import           Data.Function
 import           Data.IORef
 import           Data.List
+import           Data.List.Split
 import qualified Data.Map                   as Map
 import           Data.Maybe
 import qualified Data.Text                  as Text
@@ -194,6 +195,10 @@ setupUI font = do
     timeLabel  <- newEmptyMVar
     fpsLabel   <- newEmptyMVar
 
+    let removeFileExtention = concat . init . splitOn "."
+    defaultTrackName <- (removeFileExtention . maybeToMonoid . listToMaybe) <$> listDirectory tracksPath
+    defaultCarName   <- (removeFileExtention . maybeToMonoid . listToMaybe) <$> listDirectory carsPath
+
     let defaultFieldColors = [ (Graphics.green,     Graphics.black)
                              , (V4 100 100 100 255, Graphics.black)
                              , (Graphics.black,     Graphics.green)
@@ -211,7 +216,7 @@ setupUI font = do
                      , UI._fieldPos      = P $ V2 0.44 0.4
                      , UI._fieldColors   = defaultFieldColors
                      , UI._fieldTextSize = V2 0.8 0.1
-                     , UI._fieldText     = ""
+                     , UI._fieldText     = Text.pack defaultTrackName
                      , UI._fieldFont     = font
                      , UI._fieldState    = UI.FieldTypable
                      }
@@ -220,7 +225,7 @@ setupUI font = do
                          , UI._fieldPos      = P $ V2 0.44 0.6
                          , UI._fieldColors   = defaultFieldColors
                          , UI._fieldTextSize = V2 0.8 0.1
-                         , UI._fieldText     = ""
+                         , UI._fieldText     = Text.pack defaultCarName
                          , UI._fieldFont     = font
                          , UI._fieldState    = UI.FieldUnTypable
                          }
