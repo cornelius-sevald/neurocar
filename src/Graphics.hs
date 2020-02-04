@@ -1,29 +1,18 @@
 module Graphics
-    ( drawWorld
-    , white
+    ( white
     , black
     , red
     , green
-    , blue ) where
+    , blue
+    , renderText ) where
 
-import qualified Car                   as C
-import           Control.Lens
-import           Control.Monad
-import           Data.Maybe
-import           Data.Text             (pack)
-import           Data.Tuple.Extra      as TE
-import qualified Data.Tuple.Sequence   as TS
-import qualified Data.Vector.Storable  as V
-import           Data.Word             (Word8)
-import           Geometry
-import qualified Geometry.Intersection as GI
-import           SDL                   hiding (rotate)
-import qualified SDL.Font              as TTF
-import           SDL.Vect              hiding (rotate)
-import qualified Track                 as T
-import qualified Transform             as F
-import           Util
-import           World
+import           Control.Monad.IO.Class
+import           Data.Text              (Text)
+import           Data.Word              (Word8)
+import           Foreign.C.Types        (CInt)
+import           SDL
+import qualified SDL.Font               as TTF
+import           SDL.Vect
 
 white = V4 255 255 255 255 :: V4 Word8
 black = V4 000 000 000 255 :: V4 Word8
@@ -31,76 +20,13 @@ red   = V4 255 000 000 255 :: V4 Word8
 green = V4 000 255 000 255 :: V4 Word8
 blue  = V4 000 000 255 255 :: V4 Word8
 
-drawWorld :: Renderer -> TTF.Font -> World -> IO ()
-drawWorld ren font world = do
-    --     Draw the background
-    rendererDrawColor ren $= V4 0 0 0 255
-    clear ren
-    --     Draw the car
-    rendererDrawColor ren $= view (car . C.params . C.color) world
-    drawCar ren (view car world)
-    --     Draw the track
-    --     If the car collides with the track,
-    --     make the track red.
-    case view gameState world of
-      GameLost -> rendererDrawColor ren $= V4 255   0 0 255
-      TimeUp   -> rendererDrawColor ren $= V4 155 155 0 255
-      _        -> rendererDrawColor ren $= view (track . T.color) world
-    drawTrack ren (view track world)
-    --     Draw info to the player
-    rendererDrawColor ren $= V4 255 255 255 255
-    drawInfo ren font world
-    --     Present the world
-    present ren
+renderText :: MonadIO m => Renderer -> TTF.Font -> V4 Word8 -> Rectangle CInt -> Text -> m ()
+renderText ren font color rect contents = do
+    textSurf <- TTF.solid font color contents
+    textTex  <- createTextureFromSurface ren textSurf
 
+    rendererDrawColor ren $= color
+    copy ren textTex  Nothing (Just rect)
 
-drawCar :: Renderer -> C.Car -> IO ()
-drawCar ren car = do
-    corners <- mapM (F.toScreenPoint ren . P) (C.globalCorners car)
-    let cornersC = last corners : corners
-    drawLines ren (V.fromList cornersC)
-
-drawTrack :: RealFrac a => Renderer -> T.Track a -> IO ()
-drawTrack ren track = do
-    let ringC' = last (view T.rings track) : view T.rings track
-    innerC <- mapM ((F.toScreenPoint ren . P) . fst) ringC'
-    outerC <- mapM ((F.toScreenPoint ren . P) . snd) ringC'
-    drawLines ren (V.fromList innerC)
-    drawLines ren (V.fromList outerC)
-    -- Draw the checkpoint
-    let checkpoint' = T.getCheckpoint track
-    checkpoint <- TS.sequenceT $ TE.both (F.toScreenPoint ren . P) checkpoint'
-    rendererDrawColor ren $= V4 255 255 255 255
-    uncurry (drawLine ren) checkpoint
-
-timeRect :: Rectangle Double
-timeRect = let c = P (V2 (F.upw * 0.4) (F.uph * 0.5))
-               e =    V2 (F.upw * 0.08) (F.uph * 0.06)
-            in Rectangle c e
-
-scoreRect :: Rectangle Double
-scoreRect = let c = P (V2 (F.upw * 0.4) (F.uph * 0.425))
-                e =    V2 (F.upw * 0.08) (F.uph * 0.06)
-            in Rectangle c e
-
-drawDebugCarRays :: Renderer -> World -> IO ()
-drawDebugCarRays ren world = do
-    let rays = C.shootRays pi 7 (world^.car)
-    let intersections = catMaybes $ T.rayIntersection (world^.track) <$> rays
-    forM_ intersections $ \intersection -> do
-          o <- F.toScreenPoint ren $ P (world^.car.C.position)
-          p <- F.toScreenPoint ren $ P intersection
-          drawLine ren o p
-
-drawInfo :: Renderer -> TTF.Font -> World -> IO ()
-drawInfo ren font world = do
-    let timeText  = pack $ "Time:  " ++ show (round $ world^.timeLeft)
-        scoreText = pack $ "Score: " ++ show (world^.score)
-    timeSurf   <- TTF.solid font white timeText
-    scoreSurf  <- TTF.solid font white scoreText
-    timeTex    <- createTextureFromSurface ren timeSurf
-    scoreTex   <- createTextureFromSurface ren scoreSurf
-    _timeRect  <- F.toScreenRect ren timeRect
-    _scoreRect <- F.toScreenRect ren scoreRect
-    copy ren timeTex  Nothing (Just _timeRect)
-    copy ren scoreTex Nothing (Just _scoreRect)
+    freeSurface textSurf
+    destroyTexture textTex

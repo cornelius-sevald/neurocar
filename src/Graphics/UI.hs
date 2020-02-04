@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 module Graphics.UI
-    ( UIElement
-    , ButtonState(..)
+    ( ButtonState(..)
     , TextFieldState(..)
     , Button(..)
     , TextField(..)
@@ -47,8 +46,9 @@ import qualified Data.Text                 as Text
 import qualified Data.Tuple.Extra          as Tuple
 import qualified Data.Vector.Storable      as V
 import           Data.Word                 (Word8)
-import           Foreign.C.Types
+import           Foreign.C.Types           (CInt)
 import           Geometry
+import           Graphics
 import           SDL
 import qualified SDL.Font                  as TTF
 import           SDL.Raw.Event             (isTextInputActive)
@@ -220,12 +220,7 @@ drawUIText wp ren textElem = maybeT (return ()) return $ do
                          y = round $ fromIntegral (size^._y) / 1.8 -- magic numbers 4head
                       in center - P (V2 x y)
     let textRect   = Rectangle textCenter size
-
-    textSurf <- TTF.solid font color contents
-    textTex  <- createTextureFromSurface ren textSurf
-
-    rendererDrawColor ren $= color
-    copy ren textTex  Nothing (Just textRect)
+    renderText ren font color textRect contents
 
 drawTextField :: V2 CInt -> Renderer -> TextField -> IO ()
 drawTextField wp ren field = do
@@ -319,20 +314,20 @@ drawUI wp ren (UI buttons fields labels) = do
 
     present ren
 
-uiLoop :: Renderer -> TTF.Font -> UI -> IO ()
+uiLoop :: MonadIO m => Renderer -> TTF.Font -> UI -> m ()
 uiLoop ren font ui@(UI buttons fields labels) = do
     events <- pollEvents
 
     let eventIsQuit event = eventPayload event == QuitEvent
-    when (any eventIsQuit events) exitSuccess
+    when (any eventIsQuit events) $ liftIO exitSuccess
 
-    typing <- any (\f -> f^.fieldState == FieldTyping) <$> mapM readMVar fields
+    typing <- liftIO $ any (\f -> f^.fieldState == FieldTyping) <$> mapM readMVar fields
     let qPressed   = any (eventIsButtonPress KeycodeQ)      events
     let escPressed = any (eventIsButtonPress KeycodeEscape) events
 
     viewport'    <- SDL.get $ rendererViewport ren
     let viewport = (\(Just (Rectangle _ v)) -> v) viewport'
 
-    updateUI viewport events ren font ui
-    drawUI viewport ren ui
+    liftIO $ updateUI viewport events ren font ui
+    liftIO $ drawUI viewport ren ui
     unless ((escPressed || qPressed) && not typing) (uiLoop ren font ui)

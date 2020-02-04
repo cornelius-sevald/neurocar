@@ -24,6 +24,7 @@ import           Data.Word                  (Word32)
 import           Game
 import qualified Graphics
 import qualified Graphics.UI                as UI
+import qualified Graphics.World             as GW
 import qualified SDL
 import qualified SDL.Font                   as TTF
 import           SDL.Vect
@@ -375,7 +376,7 @@ uiStartGame ren font trackField' carField' timeField' fpsField' carButton' fpsBu
       network <- if useAICar      then lift $ NN.fromFile carPath   else return undefined
       timeref <- if not useSetFps then lift $ SDL.ticks >>= newIORef else return undefined
 
-      let drawFunc = Graphics.drawWorld ren font
+      let drawFunc = GW.drawWorld ren font
       let inputFunc w = if useAICar
                            then (NC.getNetworkInput network w ++) <$>
                                 getUserInput
