@@ -43,9 +43,9 @@ drawWorld ren font world = do
     --     If the car collides with the track,
     --     make the track red.
     case view gameState world of
-      GameRunning -> rendererDrawColor ren $= view (track . T.color) world
-      GameLost    -> rendererDrawColor ren $= V4 255   0 0 255
-      TimeUp      -> rendererDrawColor ren $= V4 155 155 0 255
+      GameLost -> rendererDrawColor ren $= V4 255   0 0 255
+      TimeUp   -> rendererDrawColor ren $= V4 155 155 0 255
+      _        -> rendererDrawColor ren $= view (track . T.color) world
     drawTrack ren (view track world)
     --     Draw info to the player
     rendererDrawColor ren $= V4 255 255 255 255

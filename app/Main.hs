@@ -10,9 +10,11 @@ import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Extra
 import           Control.Monad.IO.Class
+import           Control.Monad.Loops
 import           Control.Monad.State
 import           Control.Monad.Trans.Except
 import           Data.Function
+import           Data.IORef
 import           Data.List
 import qualified Data.Map                   as Map
 import           Data.Maybe
@@ -34,6 +36,7 @@ import           Text.Printf
 import qualified Text.Read                  as R
 import qualified Track                      as T
 import           Util
+import           World                      as W
 
 data Flags
     = Generate  -- -g, --gen
@@ -95,8 +98,9 @@ playGame = do
 
     window   <- SDL.createWindow (Text.pack "neuro  car") windowsConfig
     renderer <- SDL.createRenderer window (-1) rendererConfig
-    ui       <- setupUI
-    UI.uiLoop renderer ui
+    font     <- TTF.load fontPath fontSize
+    ui       <- setupUI font
+    UI.uiLoop renderer font ui
 
     TTF.quit
     SDL.quit
@@ -175,9 +179,8 @@ boundedPrompt str defaultVal bound = do
                show (snd bound) ++ "]"
        else return readValue
 
-setupUI :: IO UI.UI
-setupUI = do
-    font <- TTF.load fontPath fontSize
+setupUI :: TTF.Font -> IO UI.UI
+setupUI font = do
     playButton <- newEmptyMVar
     trackField <- newEmptyMVar
     carButton  <- newEmptyMVar
@@ -202,7 +205,8 @@ setupUI = do
                      , UI._fieldTextSize = V2 0.8 0.1
                      , UI._fieldText     = ""
                      , UI._fieldFont     = font
-                     , UI._fieldState    = UI.FieldTypable }
+                     , UI._fieldState    = UI.FieldTypable
+                     }
     putMVar carField $
             UI.TextField { UI._fieldSize     = V2 0.6 0.1
                          , UI._fieldPos      = P $ V2 0.44 0.6
@@ -214,7 +218,8 @@ setupUI = do
                          , UI._fieldTextSize = V2 0.8 0.1
                          , UI._fieldText     = ""
                          , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldUnTypable }
+                         , UI._fieldState    = UI.FieldUnTypable
+                         }
     putMVar timeField $
             UI.TextField { UI._fieldSize     = V2 0.1 0.1
                          , UI._fieldPos      = P $ V2 0.81 0.4
@@ -226,7 +231,8 @@ setupUI = do
                          , UI._fieldTextSize = V2 0.15 0.1
                          , UI._fieldText     = "60"
                          , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldTypable }
+                         , UI._fieldState    = UI.FieldTypable
+                         }
     putMVar fpsField $
             UI.TextField { UI._fieldSize     = V2 0.1 0.1
                          , UI._fieldPos      = P $ V2 0.81 0.6
@@ -238,7 +244,8 @@ setupUI = do
                          , UI._fieldTextSize = V2 0.15 0.1
                          , UI._fieldText     = "24"
                          , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldUnTypable }
+                         , UI._fieldState    = UI.FieldUnTypable
+                         }
     putMVar playButton $
             UI.Button { UI._buttonSize     = V2 0.2 0.1
                       , UI._buttonPos      = P $ V2 0.5 0.8
@@ -251,7 +258,18 @@ setupUI = do
                       , UI._buttonText     = "PLAY!"
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
-                      , UI._buttonAction   = state return}
+                      , UI._buttonAction   = \ren font -> lift $ do
+                          trackField' <- readMVar trackField
+                          carField'   <- readMVar carField
+                          timeField'  <- readMVar timeField
+                          fpsField'   <- readMVar fpsField
+                          carButton'  <- readMVar carButton
+                          fpsButton'  <- readMVar fpsButton
+                          result <- runExceptT $ uiStartGame ren font trackField' carField' timeField' fpsField' carButton' fpsButton'
+                          case result of
+                            Left field -> return ()
+                            Right ()   -> return ()
+                      }
     putMVar carButton $
             UI.Button { UI._buttonSize     = V2 0.05625 0.1
                       , UI._buttonPos      = P $ V2 0.1 0.6
@@ -264,14 +282,16 @@ setupUI = do
                       , UI._buttonText     = ""
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
-                      , UI._buttonAction   = do { text <- use UI.buttonText
-                                                ; if text == "X"
-                                                     then do
-                                                         UI.buttonText .= ""
-                                                         lift $ modifyMVar carField (\f -> return (UI.modifyFieldState f UI.FieldUnTypable, ()))
-                                                     else do
-                                                         UI.buttonText .= "X"
-                                                         lift $ modifyMVar carField (\f -> return (UI.modifyFieldState f UI.FieldTypable, ())) } }
+                      , UI._buttonAction   = \_ _ -> do
+                          text <- use UI.buttonText
+                          if text == "X"
+                             then do
+                                 UI.buttonText .= ""
+                                 lift $ modifyMVar carField (\f -> return (UI.modifyFieldState f UI.FieldUnTypable, ()))
+                             else do
+                                 UI.buttonText .= "X"
+                                 lift $ modifyMVar carField (\f -> return (UI.modifyFieldState f UI.FieldTypable, ()))
+                      }
     putMVar fpsButton $
             UI.Button { UI._buttonSize     = V2 0.05625 0.1
                       , UI._buttonPos      = P $ V2 0.9 0.6
@@ -284,38 +304,44 @@ setupUI = do
                       , UI._buttonText     = ""
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
-                      , UI._buttonAction   = do { text <- use UI.buttonText
-                                                ; if text == "X"
-                                                     then do
-                                                         UI.buttonText .= ""
-                                                         lift $ modifyMVar fpsField (\f -> return (UI.modifyFieldState f UI.FieldUnTypable, ()))
-                                                     else do
-                                                         UI.buttonText .= "X"
-                                                         lift $ modifyMVar fpsField (\f -> return (UI.modifyFieldState f UI.FieldTypable, ())) } }
+                      , UI._buttonAction   = \_ _ -> do
+                          text <- use UI.buttonText
+                          if text == "X"
+                             then do
+                                 UI.buttonText .= ""
+                                 lift $ modifyMVar fpsField (\f -> return (UI.modifyFieldState f UI.FieldUnTypable, ()))
+                             else do
+                                 UI.buttonText .= "X"
+                                 lift $ modifyMVar fpsField (\f -> return (UI.modifyFieldState f UI.FieldTypable, ()))
+                      }
     putMVar trackLabel $
             UI.Label { UI._labelSize  = V2 0.3 0.1
                      , UI._labelPos   = P $ V2 0.44 0.31
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = "Track name"
-                     , UI._labelFont  = font }
+                     , UI._labelFont  = font
+                     }
     putMVar carLabel $
             UI.Label { UI._labelSize  = V2 0.3 0.1
                      , UI._labelPos   = P $ V2 0.44 0.51
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = Text.pack "Car name"
-                     , UI._labelFont  = font }
+                     , UI._labelFont  = font
+                     }
     putMVar timeLabel $
             UI.Label { UI._labelSize  = V2 0.15 0.1
                      , UI._labelPos   = P $ V2 0.81 0.31
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = Text.pack "Time"
-                     , UI._labelFont  = font }
+                     , UI._labelFont  = font
+                     }
     putMVar fpsLabel $
             UI.Label { UI._labelSize  = V2 0.1 0.1
                      , UI._labelPos   = P $ V2 0.81 0.51
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = Text.pack "FPS"
-                     , UI._labelFont  = font }
+                     , UI._labelFont  = font
+                     }
 
     return $ UI.UI (Map.fromList [ ("play button", playButton)
                                  , ("car button" , carButton)
@@ -331,3 +357,50 @@ setupUI = do
                                  , ("time label" , timeLabel)
                                  , ("fps label"  , fpsLabel)
                                  ])
+
+-- Use the information from UI elements to start the game.
+uiStartGame :: SDL.Renderer -> TTF.Font ->
+    UI.TextField -> UI.TextField -> UI.TextField -> UI.TextField ->
+        UI.Button -> UI.Button -> ExceptT UI.TextField IO ()
+uiStartGame ren font trackField carField timeField fpsField carButton fpsButton
+  = let useAICar   = carButton^.UI.buttonText == "X"
+        useSetFps  = fpsButton^.UI.buttonText == "X"
+        trackName  = Text.unpack $ trackField^.UI.fieldText
+        tracksPath = trackNameToPath trackName
+        carName    = Text.unpack $ carField^.UI.fieldText
+        carPath    = carNameToPath carName
+        time       = R.readMaybe $ Text.unpack $ timeField^.UI.fieldText :: Maybe Double
+        fps        = R.readMaybe $ Text.unpack $ fpsField^.UI.fieldText  :: Maybe Word32
+     in do
+         unlessM (lift $ doesFileExist tracksPath)   $ throwE trackField
+         unlessM (lift $ (not useAICar ||) <$>
+                  doesFileExist carPath)             $ throwE carField
+         when (isNothing time || fromJust time <= 0) $ throwE timeField
+         when (useSetFps &&
+               isNothing fps  || fromJust fps  <= 0) $ throwE fpsField
+
+         let time' = fromJust time
+         let fps'  = fromJust fps
+
+         track   <- lift $ T.fromFile tracksPath
+         network <- if useAICar      then lift $ NN.fromFile carPath   else return undefined
+         timeref <- if not useSetFps then lift $ SDL.ticks >>= newIORef else return undefined
+
+         let drawFunc = Graphics.drawWorld ren font
+         let inputFunc w = if useAICar
+                              then (NC.getNetworkInput network w ++) <$>
+                                   getUserInput
+                              else getUserInput
+         let timeFunc = if useSetFps
+                           then let delay = 1000 `div` fps'
+                                 in SDL.delay delay >> return delay
+                           else do
+                               oldTick <- readIORef timeref
+                               nowTick <- SDL.ticks
+                               writeIORef timeref nowTick
+                               return $ nowTick - oldTick
+         let gameLoop_ = iterateUntilM (\w -> w^.W.gameState == GameQuit
+                                           || w^.W.gameState == GameRestart)
+                         (gameLoop drawFunc inputFunc timeFunc) (W.initWorld carParams track time')
+
+         lift $ void $ iterateUntil (\w -> w^.W.gameState /= GameRestart) gameLoop_

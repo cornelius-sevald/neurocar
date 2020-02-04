@@ -1,15 +1,20 @@
 module Game
     ( carParams
+    , getUserInput
     , gameLoop
-    , gameLoop' ) where
+    , gameLoop'
+    , eventIsButtonPress ) where
 
-import qualified Car        as C
+import qualified Car           as C
+import           Control.Monad
 import           Data.IORef
 import           Data.Maybe
-import           Data.Word  (Word32)
+import           Data.Word     (Word32)
 import           SDL
 import           SDL.Time
-import           SDL.Vect   (V2, V4)
+import           SDL.Vect      (V2, V4)
+import           System.Exit
+import           Util
 import           World
 
 carParams :: C.CarParams
@@ -28,18 +33,11 @@ gameTime :: Double
 gameTime = 60
 
 gameLoop :: (World -> IO ()) -> (World -> IO [Input]) ->
-    Either (IORef Word32) Word32 -> World -> IO World
-gameLoop drawFunc inputFunc time w = do
+    IO Word32 -> World -> IO World
+gameLoop drawFunc inputFunc timefunc w = do
     drawFunc w
     input <- inputFunc w
-    deltaTime <- case time of
-                   Left gameTicks -> do
-                       oldTick <- readIORef gameTicks
-                       nowTick <- ticks
-                       return $ fromIntegral (nowTick - oldTick) / 1000
-                   Right delayTicks -> do
-                       delay delayTicks
-                       return $ fromIntegral delayTicks / 1000
+    deltaTime <- (\x -> fromIntegral x / 1000) <$> timefunc
     return $ worldTick input deltaTime w
 
 gameLoop' :: (World -> [Input]) -> Word32 -> World -> World
@@ -51,12 +49,11 @@ getUserInput :: IO [Input]
 getUserInput = do
     keyboardState  <- getKeyboardState
     events         <- pollEvents
-    let eventIsQuitRequested event =
-            case eventPayload event of
-              QuitEvent -> True
-              _         -> False
-        quitRequested = any eventIsQuitRequested events
-        wHeld      = keyboardState ScancodeW
+
+    let eventIsQuit event = eventPayload event == QuitEvent
+    when (any eventIsQuit events) exitSuccess
+
+    let wHeld      = keyboardState ScancodeW
         aHeld      = keyboardState ScancodeA
         sHeld      = keyboardState ScancodeS
         dHeld      = keyboardState ScancodeD
@@ -64,8 +61,9 @@ getUserInput = do
         leftHeld   = keyboardState ScancodeLeft
         downHeld   = keyboardState ScancodeDown
         rightHeld  = keyboardState ScancodeRight
-        qPressed   = any (isEventButtonPress KeycodeQ) events
-        escPressed = any (isEventButtonPress KeycodeEscape) events
+        rPressed   = any (eventIsButtonPress KeycodeR) events
+        qPressed   = any (eventIsButtonPress KeycodeQ) events
+        escPressed = any (eventIsButtonPress KeycodeEscape) events
         maybeList  = [ if wHeld || upHeld    then Just GoForward
                                              else Nothing
                      , if aHeld || leftHeld  then Just GoLeft
@@ -74,15 +72,9 @@ getUserInput = do
                                              else Nothing
                      , if dHeld || rightHeld then Just GoRight
                                              else Nothing
-                     , if qPressed || escPressed || quitRequested
+                     , if rPressed           then Just Restart
+                                             else Nothing
+                     , if qPressed || escPressed
                                              then Just Quit
                                              else Nothing]
     return $ catMaybes maybeList
-
-isEventButtonPress :: Keycode -> Event -> Bool
-isEventButtonPress code event =
-            case eventPayload event of
-              KeyboardEvent keyboardEvent ->
-                  keyboardEventKeyMotion keyboardEvent == Pressed &&
-                  keysymKeycode (keyboardEventKeysym keyboardEvent) == code
-              _ -> False

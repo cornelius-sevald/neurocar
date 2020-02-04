@@ -25,6 +25,7 @@ import qualified AI.NeuralNetwork as NN
 
 data GameState = GameRunning
                | GameQuit
+               | GameRestart
                | GameLost
                | TimeUp
                deriving (Eq, Ord, Enum, Show)
@@ -41,6 +42,7 @@ data Input = GoForward
            | GoLeft
            | GoRight
            | Quit
+           | Restart
            deriving (Eq, Ord, Enum, Show)
 
 makeLenses ''World
@@ -67,7 +69,8 @@ initWorld carParams track time = let carPos = track^.carStartPos
 worldTick :: [Input] -> Double -> World -> World
 worldTick inputs deltaTime world =
     let worldState = maybeT (return ()) return $ do
-        { when (Quit `elem` inputs) (gameState .= GameQuit)
+        { when (Quit    `elem` inputs) (gameState .= GameQuit)
+        ; when (Restart `elem` inputs) (gameState .= GameRestart)
         ; guard $ view gameState world == GameRunning
         ; timeLeft -= deltaTime
         ; when (world^.timeLeft <= 0) $ (timeLeft .= 0 >> gameState .= TimeUp >> empty)

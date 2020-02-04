@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 module Graphics.UI
-    ( ButtonState(..)
+    ( UIElement
+    , ButtonState(..)
     , TextFieldState(..)
     , Button(..)
     , TextField(..)
@@ -50,9 +51,12 @@ import           Foreign.C.Types
 import           Geometry
 import           SDL
 import qualified SDL.Font                  as TTF
+import           SDL.Raw.Event             (isTextInputActive)
 import           SDL.Raw.Types             (Rect (..))
 import           SDL.Vect
 import           SDL.Video.Renderer
+import           System.Exit
+import           Util
 
 -- Classes
 
@@ -91,7 +95,7 @@ data Button
              , _buttonText     :: Text.Text
              , _buttonFont     :: TTF.Font
              , _buttonState    :: ButtonState
-             , _buttonAction   :: StateT Button IO () }
+             , _buttonAction   :: Renderer -> TTF.Font -> StateT Button IO () }
 
 data TextField
     = TextField { _fieldSize     :: V2 Double
@@ -239,8 +243,8 @@ drawButton wp ren button = do
 drawLabel :: V2 CInt -> Renderer -> Label -> IO ()
 drawLabel = drawUIText
 
-updateButton :: V2 CInt -> [Event] -> MVar Button -> IO ()
-updateButton wp events mButton = do
+updateButton :: V2 CInt -> [Event] -> Renderer -> TTF.Font -> MVar Button -> IO ()
+updateButton wp events ren font mButton = do
     button    <- takeMVar mButton
     newButton <- flip execStateT button $ do
         mouseOverButton <- lift $ mouseOverUIElem wp button
@@ -257,7 +261,7 @@ updateButton wp events mButton = do
               m1IsPressed) $ buttonState .= ButtonPressed
         when (state == ButtonPressed &&
               m1IsReleased) $ buttonState .= ButtonPressable >>
-                              when mouseOverButton (button^.buttonAction)
+                  (when mouseOverButton $ (button^.buttonAction) ren font)
     putMVar mButton newButton
 
 updateField :: V2 CInt -> [Event] -> MVar TextField -> IO ()
@@ -297,9 +301,9 @@ updateField wp events mField = do
               _                           -> return ()
     putMVar mField newField
 
-updateUI :: V2 CInt -> [Event] -> UI -> IO ()
-updateUI wp events (UI buttons fields labels) = do
-    mapM_ (updateButton wp events) buttons
+updateUI :: V2 CInt -> [Event] -> Renderer -> TTF.Font -> UI -> IO ()
+updateUI wp events ren font (UI buttons fields labels) = do
+    mapM_ (updateButton wp events ren font) buttons
     mapM_ (updateField wp events)  fields
 
 drawUI :: V2 CInt -> Renderer -> UI -> IO ()
@@ -314,18 +318,20 @@ drawUI wp ren (UI buttons fields labels) = do
 
     present ren
 
-uiLoop :: Renderer -> UI -> IO ()
-uiLoop ren ui = do
+uiLoop :: Renderer -> TTF.Font -> UI -> IO ()
+uiLoop ren font ui@(UI buttons fields labels) = do
     events <- pollEvents
-    let eventIsQPress event = case eventPayload event of
-                                KeyboardEvent keyboardEvent ->
-                                    keyboardEventKeyMotion keyboardEvent == Pressed &&
-                                        keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeQ
-                                _ -> False
-    let qPressed = any eventIsQPress events
+
+    let eventIsQuit event = eventPayload event == QuitEvent
+    when (any eventIsQuit events) exitSuccess
+
+    typing <- any (\f -> f^.fieldState == FieldTyping) <$> mapM readMVar fields
+    let qPressed   = any (eventIsButtonPress KeycodeQ)      events
+    let escPressed = any (eventIsButtonPress KeycodeEscape) events
+
     viewport'    <- SDL.get $ rendererViewport ren
     let viewport = (\(Just (Rectangle _ v)) -> v) viewport'
 
-    updateUI viewport events ui
+    updateUI viewport events ren font ui
     drawUI viewport ren ui
-    unless qPressed (uiLoop ren ui)
+    unless ((escPressed || qPressed) && not typing) (uiLoop ren font ui)
