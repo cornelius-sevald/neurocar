@@ -21,6 +21,7 @@ import qualified Data.Map                   as Map
 import           Data.Maybe
 import qualified Data.Text                  as Text
 import           Data.Word                  (Word32)
+import           Distribution.System
 import           Game
 import qualified Graphics
 import qualified Graphics.UI                as UI
@@ -165,7 +166,7 @@ prompt str defaultVal = do
                  Just val -> str ++ " [" ++ show val ++ "]: "
                  Nothing  -> str ++ ": "
     line <- liftIO $ putStr str' >>
-                   hFlush stdout >>
+                   when (buildOS /= Windows) (hFlush stdout) >> -- Windows does not like flushing stdout
                    getLine
     if null line
        then case defaultVal of
