@@ -249,7 +249,7 @@ setupUI font = do
                          , UI._fieldPos      = P $ V2 0.81 0.6
                          , UI._fieldColors   = defaultFieldColors
                          , UI._fieldTextSize = V2 0.15 0.1
-                         , UI._fieldText     = "24"
+                         , UI._fieldText     = "25"
                          , UI._fieldFont     = font
                          , UI._fieldState    = UI.FieldUnTypable
                          }
