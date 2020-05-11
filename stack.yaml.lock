@@ -13,7 +13,7 @@ packages:
     hackage: normaldistribution-1.1.0.3@sha256:2615b784c4112cbf6ffa0e2b55b76790290a9b9dff18a05d8c89aa374b213477,2160
 snapshots:
 - completed:
-    size: 524154
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/20.yaml
-    sha256: 2f5099f69ddb6abfe64400fe1e6a604e8e628f55e6837211cd70a81eb0a8fa4d
-  original: lts-14.20
+    size: 494635
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/15/12.yaml
+    sha256: a71c4293d8f461f455ff0d9815dfe4ab2f1adacd7e0bbc9a218f46ced8c4929a
+  original: lts-15.12
