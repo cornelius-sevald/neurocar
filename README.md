@@ -2,7 +2,7 @@
 
 Train a car to drive around a course, or play the course yourself.
 
-![](./neurocar.webm)
+![](./neurocar.gif)
 
 To train a car, run `neurocar --gen`,
 and to play (either yourself or using a trained car), run `neurocar --play`.
