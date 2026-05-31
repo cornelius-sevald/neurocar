@@ -188,18 +188,20 @@ boundedPrompt str defaultVal bound = do
 
 setupUI :: TTF.Font -> IO UI.UI
 setupUI font = do
-    playButton <- newEmptyMVar
-    trackField <- newEmptyMVar
-    carButton  <- newEmptyMVar
-    fpsButton  <- newEmptyMVar
-    trackField <- newEmptyMVar
-    carField   <- newEmptyMVar
-    timeField  <- newEmptyMVar
-    fpsField   <- newEmptyMVar
-    trackLabel <- newEmptyMVar
-    carLabel   <- newEmptyMVar
-    timeLabel  <- newEmptyMVar
-    fpsLabel   <- newEmptyMVar
+    playButton     <- newEmptyMVar
+    trackField     <- newEmptyMVar
+    carButton      <- newEmptyMVar
+    fpsButton      <- newEmptyMVar
+    trackField     <- newEmptyMVar
+    carField       <- newEmptyMVar
+    timeField      <- newEmptyMVar
+    fpsField       <- newEmptyMVar
+    trackLabel     <- newEmptyMVar
+    carButtonLabel <- newEmptyMVar
+    carLabel       <- newEmptyMVar
+    timeLabel      <- newEmptyMVar
+    fpsLabel       <- newEmptyMVar
+    fpsButtonLabel <- newEmptyMVar
 
     let removeFileExtention = concat . init . splitOn "."
     defaultTrackName <- (removeFileExtention . maybeToMonoid . listToMaybe) <$> listDirectory tracksPath
@@ -233,7 +235,7 @@ setupUI font = do
                          , UI._fieldTextSize = V2 0.8 0.1
                          , UI._fieldText     = Text.pack defaultCarName
                          , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldUnTypable
+                         , UI._fieldState    = UI.FieldTypable
                          }
     putMVar timeField $
             UI.TextField { UI._fieldSize     = V2 0.1 0.1
@@ -249,9 +251,9 @@ setupUI font = do
                          , UI._fieldPos      = P $ V2 0.81 0.6
                          , UI._fieldColors   = defaultFieldColors
                          , UI._fieldTextSize = V2 0.15 0.1
-                         , UI._fieldText     = "25"
+                         , UI._fieldText     = "30"
                          , UI._fieldFont     = font
-                         , UI._fieldState    = UI.FieldUnTypable
+                         , UI._fieldState    = UI.FieldTypable
                          }
     putMVar playButton $
             UI.Button { UI._buttonSize     = V2 0.2 0.1
@@ -272,7 +274,7 @@ setupUI font = do
                       , UI._buttonPos      = P $ V2 0.1 0.6
                       , UI._buttonColors   = defaultButtonColors
                       , UI._buttonTextSize = V2 0.1 0.1
-                      , UI._buttonText     = ""
+                      , UI._buttonText     = "X"
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
                       , UI._buttonAction   = \_ _ -> do
@@ -290,7 +292,7 @@ setupUI font = do
                       , UI._buttonPos      = P $ V2 0.9 0.6
                       , UI._buttonColors   = defaultButtonColors
                       , UI._buttonTextSize = V2 0.1 0.1
-                      , UI._buttonText     = ""
+                      , UI._buttonText     = "X"
                       , UI._buttonFont     = font
                       , UI._buttonState    = UI.ButtonPressable
                       , UI._buttonAction   = \_ _ -> do
@@ -308,6 +310,13 @@ setupUI font = do
                      , UI._labelPos   = P $ V2 0.44 0.31
                      , UI._labelColor = Graphics.white
                      , UI._labelText  = "Track name"
+                     , UI._labelFont  = font
+                     }
+    putMVar carButtonLabel $
+            UI.Label { UI._labelSize  = V2 0.1 0.1
+                     , UI._labelPos   = P $ V2 0.1 0.51
+                     , UI._labelColor = Graphics.white
+                     , UI._labelText  = Text.pack "AI"
                      , UI._labelFont  = font
                      }
     putMVar carLabel $
@@ -331,6 +340,13 @@ setupUI font = do
                      , UI._labelText  = Text.pack "FPS"
                      , UI._labelFont  = font
                      }
+    putMVar fpsButtonLabel $
+            UI.Label { UI._labelSize  = V2 0.1 0.05
+                     , UI._labelPos   = P $ V2 0.9 0.51
+                     , UI._labelColor = Graphics.white
+                     , UI._labelText  = Text.pack "(fixed)"
+                     , UI._labelFont  = font
+                     }
 
     return $ UI.UI (Map.fromList [ ("play button", playButton)
                                  , ("car button" , carButton)
@@ -342,9 +358,11 @@ setupUI font = do
                                  , ("fps field"  , fpsField)
                                  ])
                    (Map.fromList [ ("track label", trackLabel)
+                                 , ("car button label"  , carButtonLabel)
                                  , ("car label"  , carLabel)
                                  , ("time label" , timeLabel)
                                  , ("fps label"  , fpsLabel)
+                                 , ("fps button label"  , fpsButtonLabel)
                                  ])
 
 -- Use the information from UI elements to start the game.
